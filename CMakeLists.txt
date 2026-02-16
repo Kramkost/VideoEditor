@@ -1,23 +1,27 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.10) # 
 project(VideoEditor)
 
 set(CMAKE_CXX_STANDARD 17)
 
 # --- 1. ПУТИ ---
-set(LIBS_DIR "C:/Program/libs") 
+set(LIBS_DIR "C:/Program/libs")
 
 include_directories("${LIBS_DIR}/SDL2/include")
+include_directories("${LIBS_DIR}/SDL2/include/SDL2")
 include_directories("${LIBS_DIR}/ffmpeg/include")
+include_directories("imgui") # NEW: Путь к заголовочным файлам ImGui
+
+# NEW: Собираем все .cpp файлы ImGui в одну переменную
+file(GLOB IMGUI_SOURCES "imgui/*.cpp") 
 
 # --- 2. СОЗДАЕМ EXE ---
-add_executable(Editor main.cpp)
+# --- 2. СОЗДАЕМ EXE ---
+# Строка создания exe:
+add_executable(Editor main.cpp ui.cpp video_player.cpp ${IMGUI_SOURCES})
 
-# --- 3. ЛИНКОВКА ---
+# Строка WIN_LIBS (добавили comdlg32 в конец):
+set(WIN_LIBS setupapi imm32 version winmm gdi32 comdlg32)
 
-# Библиотеки Windows, которые просит SDL2 (решают ошибки undefined reference)
-set(WIN_LIBS setupapi imm32 version winmm gdi32)
-
-# Подключаем всё вместе
 target_link_libraries(Editor 
     mingw32 
     "${LIBS_DIR}/SDL2/lib/libSDL2main.a" 
