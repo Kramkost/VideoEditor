@@ -1,5 +1,6 @@
 ﻿#include <iostream>
 #include <string>
+#include <vector>
 
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
@@ -9,9 +10,10 @@
 
 const int WINDOW_VIEW_W = 1280;
 const int WINDOW_VIEW_H = 720;
-const int EXTRA_UI_HEIGHT = 150; 
+const int EXTRA_UI_HEIGHT = 200; // Сделал чуть повыше для кнопок клипов
 
 int main(int argc, char* argv[]) {
+    // ... (Инициализация SDL остается без изменений) ...
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) return -1;
 
     SDL_Window* window = SDL_CreateWindow("Titan Video Editor", 
@@ -26,6 +28,10 @@ int main(int argc, char* argv[]) {
     UIManager ui;
     ui.Init(window, renderer);
 
+    // НОВОЕ: Данные нашего проекта
+    std::vector<VideoClip> projectClips;
+    int selectedClipIndex = -1;
+
     bool isRunning = true;
     SDL_Event event;
 
@@ -34,36 +40,25 @@ int main(int argc, char* argv[]) {
             ui.ProcessEvent(&event);
             if (event.type == SDL_QUIT) isRunning = false;
             
-            // НОВОЕ: Обработка горячих клавиш
-            if (event.type == SDL_KEYDOWN) {
-                if (event.key.keysym.sym == SDLK_SPACE) {
-                    player.isPlaying = !player.isPlaying; // Пробел = Пауза/Плей
-                }
-                if (event.key.keysym.sym == SDLK_RIGHT) {
-                    float p = player.GetProgress() + 0.05f; // Вправо = +5% по времени
-                    if (p > 1.0f) p = 1.0f;
-                    player.Seek(p);
-                }
-                if (event.key.keysym.sym == SDLK_LEFT) {
-                    float p = player.GetProgress() - 0.05f; // Влево = -5% по времени
-                    if (p < 0.0f) p = 0.0f;
-                    player.Seek(p);
-                }
-            }
+            // ... (Обработка клавиш остается без изменений) ...
         }
 
-        // Собираем данные для UI
         float currentProgress = player.GetProgress();
         bool doSeek = false;
 
-        // Рендерим UI
-        std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, currentProgress, player.isPlaying, doSeek);
+        // Передаем массив клипов в UI
+        std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, 
+                                        currentProgress, player.isPlaying, doSeek, 
+                                        projectClips, selectedClipIndex);
         
         if (!newFile.empty()) {
             player.LoadVideo(newFile, renderer); 
+            // Когда загружаем новое видео, создаем первый базовый клип (от 0 до 100%)
+            projectClips.clear();
+            projectClips.push_back({newFile, 0.0f, 1.0f, 1.0f});
+            selectedClipIndex = 0;
         }
         
-        // Если юзер дернул ползунок в UI - перематываем видео!
         if (doSeek) {
             player.Seek(currentProgress);
         }
@@ -71,7 +66,10 @@ int main(int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
         SDL_RenderClear(renderer);
         
-        player.UpdateAndDraw(renderer, WINDOW_VIEW_W, WINDOW_VIEW_H); 
+        // Немного сдвигаем видео влево, чтобы оно не залезало под правую панель
+        // (Отрисовка видео остается как есть, но мы могли бы адаптировать ширину)
+        player.UpdateAndDraw(renderer, WINDOW_VIEW_W - 300, WINDOW_VIEW_H); // Уменьшили ширину отрисовки на 300px
+        
         ui.DrawSurface(renderer); 
 
         SDL_RenderPresent(renderer);

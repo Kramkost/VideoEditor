@@ -7,6 +7,9 @@ extern "C" {
     #include <libavformat/avformat.h>
     #include <libswscale/swscale.h>
     #include <libavutil/imgutils.h>
+    #include <libavutil/opt.h>             // Чтобы компилятор знал старые функции (на всякий)
+    #include <libavutil/channel_layout.h>
+    #include <libswresample/swresample.h> // Звуки и рессемплер
 }
 
 class VideoPlayer {
@@ -19,22 +22,31 @@ public:
     void UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH);
     
     float GetProgress();
-    void Seek(float progress); // НОВОЕ: Перемотка
+    void Seek(float progress);
 
-    bool isPlaying = false;    // НОВОЕ: Состояние паузы/плея
+    bool isPlaying = false;
 
 private:
     AVFormatContext* formatCtx = nullptr;
-    AVCodecContext* codecCtx = nullptr;
+    
+    // Видео переменные
+    AVCodecContext* videoCodecCtx = nullptr; // Переименовал для понятности
     int videoStreamIndex = -1;
     SwsContext* sws_ctx = nullptr;
-    
     AVFrame* pFrame = nullptr;
     AVFrame* pFrameBGR = nullptr;
-    AVPacket* pPacket = nullptr;
-    uint8_t* buffer = nullptr;
-    
+    uint8_t* videoBuffer = nullptr;
     SDL_Texture* texture = nullptr;
+    
+    // НОВОЕ: Аудио переменные
+    AVCodecContext* audioCodecCtx = nullptr;
+    int audioStreamIndex = -1;
+    SwrContext* swrCtx = nullptr;
+    AVFrame* aFrame = nullptr;
+    SDL_AudioDeviceID audioDevice = 0;
+    uint8_t* audioBuffer = nullptr;
+    
+    AVPacket* pPacket = nullptr;
     
     bool isLoaded = false;
     double currentPts = 0;

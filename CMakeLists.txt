@@ -29,6 +29,7 @@ target_link_libraries(Editor
     "${LIBS_DIR}/ffmpeg/lib/avformat.lib"
     "${LIBS_DIR}/ffmpeg/lib/avcodec.lib"
     "${LIBS_DIR}/ffmpeg/lib/avutil.lib"
+    "${LIBS_DIR}/ffmpeg/lib/swresample.lib"
     "${LIBS_DIR}/ffmpeg/lib/swscale.lib"
     ${WIN_LIBS}
 )
