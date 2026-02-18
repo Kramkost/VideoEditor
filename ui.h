@@ -3,12 +3,18 @@
 #include <string>
 #include <vector>
 
-// НОВОЕ: Структура для хранения отрезков видео
+// TODO: [ВАЖНО] МАГИЯ МОНТАЖА НАЧИНАЕТСЯ ЗДЕСЬ!
+// Теперь клип знает свое место на экране И свое место внутри исходного видео.
 struct VideoClip {
     std::string filepath;
-    float startTime; // Начало отрезка (от 0.0 до 1.0)
-    float endTime;   // Конец отрезка (от 0.0 до 1.0)
-    float volume;    // Громкость (0.0 - 1.0)
+    // === ВРЕМЯ НА ТАЙМЛАЙНЕ (Где находится блок) ===
+    float timelineStart; 
+    float timelineEnd;   
+    // === ВРЕМЯ ВНУТРИ ФАЙЛА (Какую часть видео играем) ===
+    float mediaStart;    
+    float mediaEnd;      
+    
+    float volume;    
 };
 
 class UIManager {
@@ -16,10 +22,10 @@ public:
     void Init(SDL_Window* window, SDL_Renderer* renderer);
     void ProcessEvent(const SDL_Event* event);
     
-    // Передаем вектор клипов и индекс выбранного клипа
     std::string Render(int windowW, int windowH, int uiHeight, 
                        float& progress, bool& isPlaying, bool& doSeek,
-                       std::vector<VideoClip>& clips, int& selectedClipIndex); 
+                       std::vector<VideoClip>& clips, int& selectedClipIndex, 
+                       bool& showExport);
                        
     void DrawSurface(SDL_Renderer* renderer);
     void Shutdown();

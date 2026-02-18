@@ -4,6 +4,7 @@
 #include "imgui_impl_sdlrenderer2.h"
 #include <stdio.h> 
 #include <windows.h> 
+#include <string>
 
 void UIManager::Init(SDL_Window* window, SDL_Renderer* renderer) {
     IMGUI_CHECKVERSION();
@@ -29,22 +30,20 @@ std::string UIManager::OpenFileDialog() {
     ofn.nFilterIndex = 1;
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
 
-    if (GetOpenFileNameA(&ofn) == TRUE) {
-        return std::string(ofn.lpstrFile);
-    }
+    if (GetOpenFileNameA(&ofn) == TRUE) return std::string(ofn.lpstrFile);
     return "";
 }
 
 std::string UIManager::Render(int windowW, int windowH, int uiHeight, 
                               float& progress, bool& isPlaying, bool& doSeek,
-                              std::vector<VideoClip>& clips, int& selectedClipIndex) {
+                              std::vector<VideoClip>& clips, int& selectedClipIndex,
+                                bool& showExport) {
     std::string selectedFile = "";
     
     ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    // === ПРАВАЯ ПАНЕЛЬ (Инспектор / Эквалайзер) ===
     int rightPanelWidth = 300;
     ImGui::SetNextWindowPos(ImVec2(windowW - rightPanelWidth, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(rightPanelWidth, windowH - uiHeight), ImGuiCond_Always);
@@ -56,87 +55,144 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     if (selectedClipIndex >= 0 && selectedClipIndex < clips.size()) {
         ImGui::Text("Clip: Segment %d", selectedClipIndex + 1);
         ImGui::Spacing();
-        // Ползунок громкости для конкретного клипа
         ImGui::SliderFloat("Volume", &clips[selectedClipIndex].volume, 0.0f, 1.0f, "%.2f");
-        
-        // Заготовка под графический эквалайзер
-        ImGui::Spacing();
-        ImGui::Text("Equalizer (Coming soon)");
-        float arr[] = { 0.2f, 0.5f, 0.8f, 0.4f, 0.9f, 0.3f, 0.6f };
-        ImGui::PlotHistogram("##EQ", arr, IM_ARRAYSIZE(arr), 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
     } else {
         ImGui::TextDisabled("Select a clip to edit properties.");
     }
     ImGui::End();
 
-    // === НИЖНЯЯ ПАНЕЛЬ (Таймлайн) ===
     ImGui::SetNextWindowPos(ImVec2(0, windowH - uiHeight), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(windowW, uiHeight), ImGuiCond_Always);
     
     ImGui::Begin("Timeline", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
-    ImGui::Text("Titan Video Editor - Timeline");
-    ImGui::Spacing();
-    
-    if (ImGui::SliderFloat("##Timeline", &progress, 0.0f, 1.0f, "%.3f")) {
-        doSeek = true; 
-    }
-    ImGui::Spacing();
     
     if (ImGui::Button("Open Video")) { selectedFile = OpenFileDialog(); }
     ImGui::SameLine();
+    if (isPlaying) { if (ImGui::Button("Pause")) isPlaying = false; } 
+    else { if (ImGui::Button("Play")) isPlaying = true; }
     
-    if (isPlaying) {
-        if (ImGui::Button("Pause")) isPlaying = false;
-    } else {
-        if (ImGui::Button("Play")) isPlaying = true;
-    }
     ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); 
     
-    // НОВОЕ: Кнопка CUT
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // Красная кнопка
+    // TODO: [ВАЖНО] ЛОГИКА РАЗРЕЗАНИЯ (CUT) ПО НОВЫМ КООРДИНАТАМ
     if (ImGui::Button("CUT (Split here)")) {
-        // Логика разрезания (создаем новый клип в массиве)
         if (clips.size() > 0 && selectedClipIndex >= 0) {
             VideoClip newClip = clips[selectedClipIndex];
-            newClip.startTime = progress; // Новый клип начинается там, где ползунок
-            clips[selectedClipIndex].endTime = progress; // Старый заканчивается тут
             
+            // Вычисляем, на какой секунде самого МЕДИА мы сейчас стоим
+            float ratio = (progress - clips[selectedClipIndex].timelineStart) / (clips[selectedClipIndex].timelineEnd - clips[selectedClipIndex].timelineStart);
+            float splitMedia = clips[selectedClipIndex].mediaStart + ratio * (clips[selectedClipIndex].mediaEnd - clips[selectedClipIndex].mediaStart);
+
+            newClip.timelineStart = progress;
+            newClip.mediaStart = splitMedia;
+
+            clips[selectedClipIndex].timelineEnd = progress;
+            clips[selectedClipIndex].mediaEnd = splitMedia;
+
             clips.insert(clips.begin() + selectedClipIndex + 1, newClip);
-            selectedClipIndex++; // Выбираем новый кусок
+            selectedClipIndex++; 
         }
     }
     ImGui::PopStyleColor();
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Text("Segments:");
-    
-    // Отрисовываем наши кусочки (клипы)
-    for (int i = 0; i < clips.size(); i++) {
-        if (i > 0) ImGui::SameLine();
-        
-        // Меняем цвет кнопки, если она выбрана
-        if (i == selectedClipIndex) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
-        
-        char btnLabel[32];
-        sprintf(btnLabel, "Clip %d", i + 1);
-        if (ImGui::Button(btnLabel, ImVec2(80, 30))) {
-            selectedClipIndex = i; // Выбираем клип при клике
-            // По-хорошему, тут еще нужно прыгнуть на время clips[i].startTime
-            progress = clips[i].startTime;
-            doSeek = true;
-        }
-        
-        if (i == selectedClipIndex) ImGui::PopStyleColor();
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.9f, 1.0f)); // Синяя кнопка
+    if (ImGui::Button("EXPORT VIDEO")) {
+        showExport = true; // Открываем всплывающее окно
     }
+    ImGui::PopStyleColor();
+
+    ImGui::Spacing(); ImGui::Separator();
+    ImGui::Text("Video Track 1");
     
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    float trackWidth = ImGui::GetContentRegionAvail().x;
+    float trackHeight = 50.0f; 
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    draw_list->AddRectFilled(p, ImVec2(p.x + trackWidth, p.y + trackHeight), IM_COL32(30, 30, 30, 255));
+
+    for (int i = 0; i < clips.size(); i++) {
+        float x1 = p.x + (clips[i].timelineStart * trackWidth);
+        float x2 = p.x + (clips[i].timelineEnd * trackWidth);
+        
+        ImU32 clipColor = (i == selectedClipIndex) ? IM_COL32(100, 150, 220, 255) : IM_COL32(50, 100, 160, 255);
+        draw_list->AddRectFilled(ImVec2(x1 + 1, p.y + 2), ImVec2(x2 - 1, p.y + trackHeight - 2), clipColor, 4.0f);
+        
+        char label[32]; sprintf(label, "Clip %d", i + 1);
+        draw_list->AddText(ImVec2(x1 + 5, p.y + 5), IM_COL32(255, 255, 255, 255), label);
+        
+        // TODO: [ВАЖНО] ЛЕВЫЙ КРАЙ (TRIM IN)
+        ImGui::SetCursorScreenPos(ImVec2(x1 - 4, p.y));
+        ImGui::InvisibleButton((std::string("left_") + std::to_string(i)).c_str(), ImVec2(8, trackHeight));
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
+            float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
+            if (clips[i].mediaStart + delta < 0.0f) delta = -clips[i].mediaStart;
+            if (clips[i].timelineStart + delta >= clips[i].timelineEnd - 0.01f) delta = clips[i].timelineEnd - clips[i].timelineStart - 0.01f;
+            
+            clips[i].timelineStart += delta;
+            clips[i].mediaStart += delta; // Время медиа едет вместе с краем!
+            
+            progress = clips[i].timelineStart; doSeek = true; selectedClipIndex = i;
+        }
+
+        // TODO: [ВАЖНО] ПРАВЫЙ КРАЙ (TRIM OUT)
+        ImGui::SetCursorScreenPos(ImVec2(x2 - 4, p.y));
+        ImGui::InvisibleButton((std::string("right_") + std::to_string(i)).c_str(), ImVec2(8, trackHeight));
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
+            float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
+            if (clips[i].mediaEnd + delta > 1.0f) delta = 1.0f - clips[i].mediaEnd;
+            if (clips[i].timelineEnd + delta <= clips[i].timelineStart + 0.01f) delta = clips[i].timelineStart + 0.01f - clips[i].timelineEnd;
+            
+            clips[i].timelineEnd += delta;
+            clips[i].mediaEnd += delta;
+            
+            progress = clips[i].timelineEnd; doSeek = true; selectedClipIndex = i;
+        }
+
+        // TODO: [ВАЖНО] ПЕРЕМЕЩЕНИЕ КЛИПА ЦЕЛИКОМ (DRAG & DROP)
+        ImGui::SetCursorScreenPos(ImVec2(x1 + 4, p.y));
+        ImGui::InvisibleButton((std::string("body_") + std::to_string(i)).c_str(), ImVec2(x2 - x1 - 8, trackHeight));
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        
+        if (ImGui::IsItemClicked()) selectedClipIndex = i;
+        
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
+            float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
+            if (clips[i].timelineStart + delta < 0.0f) delta = -clips[i].timelineStart;
+            if (clips[i].timelineEnd + delta > 1.0f) delta = 1.0f - clips[i].timelineEnd;
+            
+            clips[i].timelineStart += delta;
+            clips[i].timelineEnd += delta;
+            // Время МЕДИА здесь не меняется, мы просто двигаем "окно" в другое место!
+            
+            progress = clips[i].timelineStart; doSeek = true;
+        }
+    }
+
+    float playheadX = p.x + (progress * trackWidth);
+    draw_list->AddLine(ImVec2(playheadX, p.y - 10), ImVec2(playheadX, p.y + trackHeight + 10), IM_COL32(255, 50, 50, 255), 2.0f);
+    draw_list->AddTriangleFilled(ImVec2(playheadX - 6, p.y - 10), ImVec2(playheadX + 6, p.y - 10), ImVec2(playheadX, p.y), IM_COL32(255, 50, 50, 255));
+
+    ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + trackHeight));
+    ImGui::InvisibleButton("##TrackArea", ImVec2(trackWidth, 20.0f));
+    if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
+        progress = (ImGui::GetMousePos().x - p.x) / trackWidth;
+        if (progress < 0.0f) progress = 0.0f;
+        if (progress > 1.0f) progress = 1.0f;
+        doSeek = true;
+    }
+
     ImGui::End();
-    ImGui::Render();
-    
     return selectedFile;
 }
 
 void UIManager::DrawSurface(SDL_Renderer* renderer) {
+    ImGui::Render();
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
 }
 
@@ -145,3 +201,4 @@ void UIManager::Shutdown() {
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
 }
+

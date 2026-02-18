@@ -19,14 +19,17 @@ public:
 
     bool LoadVideo(const std::string& filepath, SDL_Renderer* renderer);
     void CloseVideo();
-    void UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH);
+    void UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec);
     
     float GetProgress();
     void Seek(float progress);
-
+    void ClearAudio();
+    double GetDurationSeconds();
     bool isPlaying = false;
+    float currentVolume = 1.0f;
 
 private:
+    double timeBase = 0;
     AVFormatContext* formatCtx = nullptr;
     
     // Видео переменные

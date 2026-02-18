@@ -95,55 +95,55 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
 
     pPacket = av_packet_alloc();
     durationPts = (double)formatCtx->streams[videoStreamIndex]->duration;
+    timeBase = av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
     isLoaded = true;
     isPlaying = true; 
     return true;
 }
-
-void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH) {
+void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec) {
     if (!isLoaded) return;
 
     if (isPlaying) {
-        SDL_PauseAudioDevice(audioDevice, 0); // Плей звука
+        SDL_PauseAudioDevice(audioDevice, 0); 
         bool frameDecoded = false;
         
-        while (!frameDecoded && av_read_frame(formatCtx, pPacket) >= 0) {
+        // ЧИТАЕМ ПАКЕТЫ, ТОЛЬКО ЕСЛИ ВРЕМЯ КАДРА МЕНЬШЕ ПОЛЗУНКА ТАЙМЛАЙНА
+        while (currentPts * timeBase <= targetTimeSec && av_read_frame(formatCtx, pPacket) >= 0) {
             
-            // --- ЕСЛИ ЭТО ВИДЕО ---
             if (pPacket->stream_index == videoStreamIndex) {
                 avcodec_send_packet(videoCodecCtx, pPacket);
                 if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
-                    sws_scale(sws_ctx, (uint8_t const * const *)pFrame->data,
-                              pFrame->linesize, 0, videoCodecCtx->height,
-                              pFrameBGR->data, pFrameBGR->linesize);
-
-                    SDL_UpdateTexture(texture, nullptr, pFrameBGR->data[0], pFrameBGR->linesize[0]);
                     currentPts = (double)pFrame->pts;
-                    frameDecoded = true; // Выходим из цикла только если обновили картинку
+                    frameDecoded = true; 
                 }
             }
-            // --- ЕСЛИ ЭТО АУДИО ---
             else if (pPacket->stream_index == audioStreamIndex) {
                 avcodec_send_packet(audioCodecCtx, pPacket);
                 while (avcodec_receive_frame(audioCodecCtx, aFrame) == 0) {
-                    // Переводим звук в нужный формат
                     int out_samples = swr_convert(swrCtx, &audioBuffer, 192000, 
                                                   (const uint8_t**)aFrame->data, aFrame->nb_samples);
-                    // Вычисляем размер получившихся данных: сэмплы * 2 канала * 2 байта (16 бит)
                     int data_size = out_samples * 2 * 2; 
                     
-                    // Закидываем звук в очередь SDL
+                    int16_t* samples = (int16_t*)audioBuffer;
+                    int num_samples = data_size / 2; 
+                    for (int i = 0; i < num_samples; i++) {
+                        samples[i] = (int16_t)(samples[i] * currentVolume);
+                    }
                     SDL_QueueAudio(audioDevice, audioBuffer, data_size);
                 }
             }
             av_packet_unref(pPacket);
         }
         
-        if (!frameDecoded) {
-            isPlaying = false; 
+        // РИСУЕМ ТОЛЬКО ПОСЛЕДНИЙ РАСКОДИРОВАННЫЙ КАДР (ОПТИМИЗАЦИЯ!)
+        if (frameDecoded) {
+            sws_scale(sws_ctx, (uint8_t const * const *)pFrame->data,
+                      pFrame->linesize, 0, videoCodecCtx->height,
+                      pFrameBGR->data, pFrameBGR->linesize);
+
+            SDL_UpdateTexture(texture, nullptr, pFrameBGR->data[0], pFrameBGR->linesize[0]);
         }
     } else {
-        // Если на паузе - глушим звук
         SDL_PauseAudioDevice(audioDevice, 1);
     }
 
@@ -214,4 +214,15 @@ void VideoPlayer::CloseVideo() {
     if (videoCodecCtx) { avcodec_free_context(&videoCodecCtx); videoCodecCtx = nullptr; }
     if (formatCtx) { avformat_close_input(&formatCtx); formatCtx = nullptr; }
     if (texture) { SDL_DestroyTexture(texture); texture = nullptr; }
+}
+
+double VideoPlayer::GetDurationSeconds() {
+    if (!isLoaded || durationPts <= 0) return 0.0;
+    return durationPts * timeBase;
+}
+
+void VideoPlayer::ClearAudio() {
+    if (audioDevice) {
+        SDL_ClearQueuedAudio(audioDevice);
+    }
 }
