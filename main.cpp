@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <string>
 #include <vector>
+#include <cmath> // Для std::abs
 #include "export_ui.h"
 
 #define SDL_MAIN_HANDLED
@@ -31,7 +32,6 @@ int main(int argc, char* argv[]) {
         {"Audio 1 (Music)", TRACK_AUDIO}
     };
 
-    // TODO: [ВАЖНО] МИКШЕР: Создаем по одному плееру на каждую дорожку!
     std::vector<VideoPlayer*> players;
     for (int i = 0; i < projectTracks.size(); i++) {
         players.push_back(new VideoPlayer());
@@ -64,9 +64,13 @@ int main(int argc, char* argv[]) {
                 std::string droppedFile = event.drop.file;
                 SDL_free(event.drop.file); 
                 
-                projectClips.push_back({droppedFile, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0});
+                float start = currentProgress;
+                float end = start + 0.15f; 
+                if (end > 1.0f) end = 1.0f;
+                if (projectClips.empty()) { start = 0.0f; end = 1.0f; }
+
+                projectClips.push_back({droppedFile, start, end, 0.0f, 1.0f, 1.0f, 0});
                 selectedClipIndex = projectClips.size() - 1;
-                currentProgress = 0.0f;
             }
             
             if (event.type == SDL_KEYDOWN) {
@@ -76,7 +80,6 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // Вычисляем длину проекта (по самому длинному загруженному видео)
         double maxDurationSec = 1.0;
         for (auto p : players) {
             if (p->isLoaded && p->GetDurationSeconds() > maxDurationSec) maxDurationSec = p->GetDurationSeconds();
@@ -99,7 +102,6 @@ int main(int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         
-        // TODO: [ВАЖНО] РЕНДЕРИМ ВСЕ ДОРОЖКИ СНИЗУ ВВЕРХ (Layering)
         for (int t = 0; t < projectTracks.size(); ++t) {
             int activeClipIndex = -1;
             for (int i = 0; i < projectClips.size(); ++i) {
@@ -112,24 +114,28 @@ int main(int argc, char* argv[]) {
             if (activeClipIndex != -1) {
                 VideoClip& activeClip = projectClips[activeClipIndex];
                 
-                // Если плеер пуст или там другой файл - грузим нужный!
                 if (players[t]->loadedFilepath != activeClip.filepath) {
                     players[t]->LoadVideo(activeClip.filepath, renderer);
                 }
 
                 float ratio = (currentProgress - activeClip.timelineStart) / (activeClip.timelineEnd - activeClip.timelineStart);
                 float mediaProgress = activeClip.mediaStart + ratio * (activeClip.mediaEnd - activeClip.mediaStart);
+                double targetTimeSec = mediaProgress * players[t]->GetDurationSeconds();
 
-                if (doSeek || activeClipIndex != lastActiveClipPerTrack[t]) {
+                // TODO: [ГЛАВНЫЙ ФИКС ЛАГОВ ПРИ РАЗРЕЗАНИИ (CUT)]
+                if (doSeek) {
                     players[t]->Seek(mediaProgress);
+                } else if (activeClipIndex != lastActiveClipPerTrack[t]) {
+                    // Если клип сменился, но время идет подряд (просто разрезанный кусок) - НЕ ДЕЛАЕМ SEEK!
+                    if (std::abs(targetTimeSec - players[t]->GetCurrentSec()) > 0.1) {
+                        players[t]->Seek(mediaProgress);
+                    }
                 }
 
                 players[t]->isPlaying = isPlaying; 
                 players[t]->currentVolume = activeClip.volume;
                 
-                double targetTimeSec = mediaProgress * players[t]->GetDurationSeconds();
                 bool isVideoTrack = (projectTracks[t].type == TRACK_VIDEO);
-                
                 players[t]->UpdateAndDraw(renderer, WINDOW_VIEW_W - 300, WINDOW_VIEW_H, targetTimeSec, isVideoTrack); 
             } 
             else {

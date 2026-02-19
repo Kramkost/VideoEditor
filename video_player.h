@@ -19,26 +19,26 @@ public:
 
     bool LoadVideo(const std::string& filepath, SDL_Renderer* renderer);
     void CloseVideo();
-    
-    // НОВОЕ: Добавлен параметр drawVideo (Рисовать ли кадр на экран)
     void UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec, bool drawVideo);
     
     float GetProgress();
     void Seek(float progress);
     void ClearAudio();
     double GetDurationSeconds();
+    double GetCurrentSec(); // НОВОЕ: Нужно для умного избегания микрофризов
 
     bool isPlaying = false;
     float currentVolume = 1.0f;
-    std::string loadedFilepath = ""; // НОВОЕ: Запоминаем, какой файл сейчас внутри
-    bool isLoaded = false;           // Вынесли в public для проверок
+    std::string loadedFilepath = ""; 
+    bool isImage = false; 
+    bool isLoaded = false;           
+    bool textureNeedsUpdate = false;
 
 private:
     double durationSec = 0;
     double currentSec = 0;
     
     AVFormatContext* formatCtx = nullptr;
-    
     AVCodecContext* videoCodecCtx = nullptr; 
     int videoStreamIndex = -1;
     SwsContext* sws_ctx = nullptr;

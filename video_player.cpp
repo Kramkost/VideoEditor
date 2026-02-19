@@ -3,11 +3,19 @@
 #include <iostream>
 
 VideoPlayer::VideoPlayer() {}
-
 VideoPlayer::~VideoPlayer() { CloseVideo(); }
 
+AVPixelFormat FixDeprecatedFormat(AVPixelFormat fmt) {
+    switch (fmt) {
+        case AV_PIX_FMT_YUVJ420P: return AV_PIX_FMT_YUV420P;
+        case AV_PIX_FMT_YUVJ422P: return AV_PIX_FMT_YUV422P;
+        case AV_PIX_FMT_YUVJ444P: return AV_PIX_FMT_YUV444P;
+        case AV_PIX_FMT_YUVJ440P: return AV_PIX_FMT_YUV440P;
+        default: return fmt;
+    }
+}
+
 bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer) {
-    // ОПТИМИЗАЦИЯ: Если файл уже загружен - ничего не делаем!
     if (isLoaded && loadedFilepath == filepath) return true;
 
     CloseVideo(); 
@@ -16,6 +24,13 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
     formatCtx = avformat_alloc_context();
     if (avformat_open_input(&formatCtx, filepath.c_str(), nullptr, nullptr) != 0) return false;
     avformat_find_stream_info(formatCtx, nullptr);
+
+    durationSec = (double)formatCtx->duration / AV_TIME_BASE;
+    isImage = false;
+    if (durationSec <= 0.1 || formatCtx->duration < 0) {
+        isImage = true;
+        durationSec = 10.0; 
+    }
 
     videoStreamIndex = -1; audioStreamIndex = -1;
     for (unsigned int i = 0; i < formatCtx->nb_streams; i++) {
@@ -28,15 +43,82 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
         const AVCodec* vCodec = avcodec_find_decoder(vCodecParams->codec_id);
         videoCodecCtx = avcodec_alloc_context3(vCodec);
         avcodec_parameters_to_context(videoCodecCtx, vCodecParams);
+
+        if (!isImage) {
+            videoCodecCtx->thread_count = 0; 
+            videoCodecCtx->thread_type = FF_THREAD_FRAME;
+        }
+
         avcodec_open2(videoCodecCtx, vCodec, nullptr);
 
-        texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, videoCodecCtx->width, videoCodecCtx->height);
-        sws_ctx = sws_getContext(videoCodecCtx->width, videoCodecCtx->height, videoCodecCtx->pix_fmt, videoCodecCtx->width, videoCodecCtx->height, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+        pFrame = av_frame_alloc(); 
+        pFrameBGR = av_frame_alloc();
 
-        pFrame = av_frame_alloc(); pFrameBGR = av_frame_alloc();
-        int numBytes = av_image_get_buffer_size(AV_PIX_FMT_BGRA, videoCodecCtx->width, videoCodecCtx->height, 1);
-        videoBuffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
-        av_image_fill_arrays(pFrameBGR->data, pFrameBGR->linesize, videoBuffer, AV_PIX_FMT_BGRA, videoCodecCtx->width, videoCodecCtx->height, 1);
+        if (isImage) {
+            av_seek_frame(formatCtx, -1, 0, AVSEEK_FLAG_BACKWARD);
+            AVPacket* tempPkt = av_packet_alloc();
+            bool decoded = false;
+            
+            while (!decoded && av_read_frame(formatCtx, tempPkt) >= 0) {
+                if (tempPkt->stream_index == videoStreamIndex) {
+                    avcodec_send_packet(videoCodecCtx, tempPkt);
+                    if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) decoded = true;
+                }
+                av_packet_unref(tempPkt);
+            }
+            av_packet_free(&tempPkt);
+
+            // TODO: [БРОНЕБОЙНЫЙ ФИКС КАРТИНОК] 
+            // Форсируем отдачу кадра (Flush декодера)! Выплевываем то, что застряло в памяти WebP/JPEG.
+            if (!decoded) {
+                avcodec_send_packet(videoCodecCtx, nullptr); // Отправляем сигнал "конец файла"
+                if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
+                    decoded = true;
+                }
+            }
+
+            // Защита от нулевого размера (0x0 is invalid scaling dimension)
+            int frameW = pFrame->width > 0 ? pFrame->width : videoCodecCtx->width;
+            int frameH = pFrame->height > 0 ? pFrame->height : videoCodecCtx->height;
+
+            if (!decoded || frameW <= 0 || frameH <= 0) {
+                std::cerr << "ERROR: Unreadable image format or 0x0 size: " << filepath << std::endl;
+                CloseVideo(); // Мягко отменяем загрузку файла, чтобы прога не крашнулась
+                return false;
+            }
+
+            AVPixelFormat actualFormat = FixDeprecatedFormat((AVPixelFormat)pFrame->format);
+            if (actualFormat == AV_PIX_FMT_NONE) actualFormat = FixDeprecatedFormat(videoCodecCtx->pix_fmt);
+
+            sws_ctx = sws_getContext(frameW, frameH, actualFormat,
+                                     frameW, frameH, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+
+            texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, frameW, frameH);
+            SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+
+            int numBytes = av_image_get_buffer_size(AV_PIX_FMT_BGRA, frameW, frameH, 1);
+            videoBuffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+            av_image_fill_arrays(pFrameBGR->data, pFrameBGR->linesize, videoBuffer, AV_PIX_FMT_BGRA, frameW, frameH, 1);
+
+            if (sws_ctx && pFrame->data[0]) {
+                sws_scale(sws_ctx, pFrame->data, pFrame->linesize, 0, frameH, pFrameBGR->data, pFrameBGR->linesize);
+                SDL_UpdateTexture(texture, nullptr, pFrameBGR->data[0], pFrameBGR->linesize[0]);
+            }
+        } 
+        else {
+            AVPixelFormat fmt = FixDeprecatedFormat(videoCodecCtx->pix_fmt);
+            if (fmt == AV_PIX_FMT_NONE) fmt = AV_PIX_FMT_YUV420P; 
+
+            sws_ctx = sws_getContext(videoCodecCtx->width, videoCodecCtx->height, fmt,
+                                     videoCodecCtx->width, videoCodecCtx->height, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+
+            texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, videoCodecCtx->width, videoCodecCtx->height);
+            SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
+
+            int numBytes = av_image_get_buffer_size(AV_PIX_FMT_BGRA, videoCodecCtx->width, videoCodecCtx->height, 1);
+            videoBuffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+            av_image_fill_arrays(pFrameBGR->data, pFrameBGR->linesize, videoBuffer, AV_PIX_FMT_BGRA, videoCodecCtx->width, videoCodecCtx->height, 1);
+        }
     }
 
     if (audioStreamIndex != -1) {
@@ -61,7 +143,6 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
     }
 
     pPacket = av_packet_alloc();
-    durationSec = (double)formatCtx->duration / AV_TIME_BASE;
     isLoaded = true; isPlaying = true; 
     return true;
 }
@@ -69,53 +150,68 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
 void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec, bool drawVideo) {
     if (!isLoaded) return;
 
+    bool frameDecoded = false; 
+
     if (isPlaying) {
-        SDL_PauseAudioDevice(audioDevice, 0); 
-        bool frameDecoded = false;
+        if (audioDevice) SDL_PauseAudioDevice(audioDevice, 0); 
         
-        while (currentSec <= targetTimeSec && av_read_frame(formatCtx, pPacket) >= 0) {
-            if (pPacket->stream_index == videoStreamIndex) {
-                avcodec_send_packet(videoCodecCtx, pPacket);
-                if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
-                    currentSec = pFrame->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
-                    frameDecoded = true; 
-                }
+        if (!isImage) {
+            if (targetTimeSec - currentSec > 0.15) {
+                videoCodecCtx->skip_frame = AVDISCARD_NONREF; 
+            } else {
+                videoCodecCtx->skip_frame = AVDISCARD_DEFAULT;
             }
-            else if (pPacket->stream_index == audioStreamIndex) {
-                double audioPtsSec = pPacket->pts * av_q2d(formatCtx->streams[audioStreamIndex]->time_base);
-                avcodec_send_packet(audioCodecCtx, pPacket);
-                while (avcodec_receive_frame(audioCodecCtx, aFrame) == 0) {
-                    // TODO: [ВАЖНО] ФИКС БАГА! Защита от "наслоения" старого звука
-                    if (audioPtsSec >= targetTimeSec - 0.15) {
-                        int out_samples = swr_convert(swrCtx, &audioBuffer, 192000, (const uint8_t**)aFrame->data, aFrame->nb_samples);
-                        int data_size = out_samples * 2 * 2; 
-                        
-                        int16_t* samples = (int16_t*)audioBuffer;
-                        int num_samples = data_size / 2; 
-                        for (int i = 0; i < num_samples; i++) samples[i] = (int16_t)(samples[i] * currentVolume);
-                        SDL_QueueAudio(audioDevice, audioBuffer, data_size);
+
+            int loopProtection = 0; 
+            while (currentSec <= targetTimeSec && loopProtection < 10 && av_read_frame(formatCtx, pPacket) >= 0) {
+                loopProtection++;
+                
+                if (pPacket->stream_index == videoStreamIndex) {
+                    avcodec_send_packet(videoCodecCtx, pPacket);
+                    if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
+                        currentSec = pFrame->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
+                        frameDecoded = true; 
                     }
                 }
+                else if (pPacket->stream_index == audioStreamIndex && audioDevice) {
+                    double audioPtsSec = pPacket->pts * av_q2d(formatCtx->streams[audioStreamIndex]->time_base);
+                    avcodec_send_packet(audioCodecCtx, pPacket);
+                    while (avcodec_receive_frame(audioCodecCtx, aFrame) == 0) {
+                        if (audioPtsSec >= targetTimeSec - 0.15) {
+                            int out_samples = swr_convert(swrCtx, &audioBuffer, 192000, (const uint8_t**)aFrame->data, aFrame->nb_samples);
+                            int data_size = out_samples * 2 * 2; 
+                            int16_t* samples = (int16_t*)audioBuffer;
+                            int num_samples = data_size / 2; 
+                            for (int i = 0; i < num_samples; i++) samples[i] = (int16_t)(samples[i] * currentVolume);
+                            SDL_QueueAudio(audioDevice, audioBuffer, data_size);
+                        }
+                    }
+                }
+                av_packet_unref(pPacket);
             }
-            av_packet_unref(pPacket);
         }
-        
-        // Масштабируем картинку только если мы разрешили рисовать видео!
-        if (drawVideo && frameDecoded && videoStreamIndex != -1) {
+    } else {
+        if (audioDevice) SDL_PauseAudioDevice(audioDevice, 1);
+    }
+
+    if (!isImage && drawVideo && (frameDecoded || textureNeedsUpdate) && videoStreamIndex != -1) {
+        if (pFrame && pFrame->data[0] != nullptr && sws_ctx) {
             sws_scale(sws_ctx, (uint8_t const * const *)pFrame->data, pFrame->linesize, 0, videoCodecCtx->height, pFrameBGR->data, pFrameBGR->linesize);
             SDL_UpdateTexture(texture, nullptr, pFrameBGR->data[0], pFrameBGR->linesize[0]);
         }
-    } else {
-        SDL_PauseAudioDevice(audioDevice, 1);
+        textureNeedsUpdate = false; 
     }
 
-    if (drawVideo && videoStreamIndex != -1) {
-        float scaleW = (float)windowW / videoCodecCtx->width;
-        float scaleH = (float)windowH / videoCodecCtx->height;
+    if (drawVideo && videoStreamIndex != -1 && texture) {
+        int texW = 0, texH = 0;
+        SDL_QueryTexture(texture, nullptr, nullptr, &texW, &texH); 
+
+        float scaleW = (float)windowW / texW;
+        float scaleH = (float)windowH / texH;
         float finalScale = std::min(scaleW, scaleH);
         
-        int finalW = (int)(videoCodecCtx->width * finalScale);
-        int finalH = (int)(videoCodecCtx->height * finalScale);
+        int finalW = (int)(texW * finalScale);
+        int finalH = (int)(texH * finalScale);
         int xOffset = (windowW - finalW) / 2;
         int yOffset = (windowH - finalH) / 2;
         
@@ -125,13 +221,13 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH
 }
 
 void VideoPlayer::Seek(float progress) {
-    if (!isLoaded || durationSec <= 0) return;
+    if (!isLoaded || isImage) return; 
     
     int64_t target_pts_av = (int64_t)(progress * formatCtx->duration);
     av_seek_frame(formatCtx, -1, target_pts_av, AVSEEK_FLAG_BACKWARD);
     
     if (videoCodecCtx) avcodec_flush_buffers(videoCodecCtx); 
-    if (audioCodecCtx) { avcodec_flush_buffers(audioCodecCtx); SDL_ClearQueuedAudio(audioDevice); }
+    if (audioCodecCtx) { avcodec_flush_buffers(audioCodecCtx); if(audioDevice) SDL_ClearQueuedAudio(audioDevice); }
     
     if (videoStreamIndex != -1) {
         bool frameDecoded = false;
@@ -146,12 +242,16 @@ void VideoPlayer::Seek(float progress) {
             av_packet_unref(pPacket);
         }
     } else {
-        currentSec = target_pts_av / (double)AV_TIME_BASE; // Для аудио-файлов
+        currentSec = target_pts_av / (double)AV_TIME_BASE; 
     }
+
+    textureNeedsUpdate = true; 
 }
 
 double VideoPlayer::GetDurationSeconds() { return durationSec; }
+double VideoPlayer::GetCurrentSec() { return currentSec; }
 void VideoPlayer::ClearAudio() { if (audioDevice) SDL_ClearQueuedAudio(audioDevice); }
+
 void VideoPlayer::CloseVideo() {
     if (!isLoaded) return;
     isLoaded = false; isPlaying = false;
@@ -169,4 +269,5 @@ void VideoPlayer::CloseVideo() {
     if (formatCtx) { avformat_close_input(&formatCtx); formatCtx = nullptr; }
     if (texture) { SDL_DestroyTexture(texture); texture = nullptr; }
 }
+
 float VideoPlayer::GetProgress() { return (float)(currentSec / durationSec); }
