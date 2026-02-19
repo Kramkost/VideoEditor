@@ -11,7 +11,8 @@
 
 const int WINDOW_VIEW_W = 1280;
 const int WINDOW_VIEW_H = 720;
-const int EXTRA_UI_HEIGHT = 200; 
+// Увеличили высоту, чтобы мультитрек влез на экран
+const int EXTRA_UI_HEIGHT = 250; 
 
 int main(int argc, char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0) return -1; 
@@ -27,8 +28,15 @@ int main(int argc, char* argv[]) {
     VideoPlayer player; 
     UIManager ui;
     ui.Init(window, renderer);
-    ExportUI exportMenu;        // <--- НОВОЕ
+    ExportUI exportMenu;        
     bool showExportMenu = false;
+
+    // TODO: [ВАЖНО] РЕГИСТРИРУЕМ НАШИ ДОРОЖКИ (КАК В PREMIERE)
+    std::vector<TimelineTrack> projectTracks = {
+        {"Video 1 (Main)", TRACK_VIDEO},
+        {"Video 2 (Overlay)", TRACK_VIDEO},
+        {"Audio 1 (Music/SFX)", TRACK_AUDIO}
+    };
 
     std::vector<VideoClip> projectClips;
     int selectedClipIndex = -1;
@@ -57,8 +65,8 @@ int main(int argc, char* argv[]) {
                 
                 player.LoadVideo(droppedFile, renderer); 
                 projectClips.clear();
-                // НОВОЕ: 0.0, 1.0 (Таймлайн) и 0.0, 1.0 (Медиа)
-                projectClips.push_back({droppedFile, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f});
+                // При загрузке файла кладем его на дорожку 0 (Video 1)
+                projectClips.push_back({droppedFile, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0});
                 selectedClipIndex = 0;
                 currentProgress = 0.0f;
             }
@@ -79,14 +87,15 @@ int main(int argc, char* argv[]) {
         }
 
         bool doSeek = false;
+        // Передаем projectTracks в интерфейс!
         std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, 
                                         currentProgress, player.isPlaying, doSeek, 
-                                        projectClips, selectedClipIndex, showExportMenu);
+                                        projectClips, selectedClipIndex, showExportMenu, projectTracks);
                                            
         if (!newFile.empty()) {
             player.LoadVideo(newFile, renderer); 
             projectClips.clear();
-            projectClips.push_back({newFile, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f});
+            projectClips.push_back({newFile, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0});
             selectedClipIndex = 0;
             currentProgress = 0.0f; 
         }
@@ -94,13 +103,19 @@ int main(int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
         SDL_RenderClear(renderer);
         
-        // TODO: [ВАЖНО] ЛОГИКА NLE - ИЩЕМ АКТИВНЫЙ КЛИП
+        // TODO: [ВАЖНО] ИЩЕМ АКТИВНЫЙ КЛИП СВЕРХУ ВНИЗ ПО ДОРОЖКАМ
+        // Если клипы накладываются друг на друга, мы покажем тот, что лежит на самой "верхней" видео-дорожке
         int activeClipIndex = -1;
-        for (int i = 0; i < projectClips.size(); i++) {
-            if (currentProgress >= projectClips[i].timelineStart && currentProgress < projectClips[i].timelineEnd) {
-                activeClipIndex = i;
-                break;
+        for (int t = 0; t < projectTracks.size(); ++t) {
+            for (int i = 0; i < projectClips.size(); ++i) {
+                if (projectClips[i].trackIndex == t && 
+                    currentProgress >= projectClips[i].timelineStart && 
+                    currentProgress < projectClips[i].timelineEnd) {
+                    activeClipIndex = i;
+                    break;
+                }
             }
+            if (activeClipIndex != -1) break; // Нашли самый приоритетный клип, прекращаем поиск!
         }
 
         static int lastActiveClipIndex = -1;
@@ -108,11 +123,9 @@ int main(int argc, char* argv[]) {
         if (activeClipIndex != -1) {
             VideoClip& activeClip = projectClips[activeClipIndex];
             
-            // Вычисляем, какой кадр медиа нужно показать (Магия!)
             float ratio = (currentProgress - activeClip.timelineStart) / (activeClip.timelineEnd - activeClip.timelineStart);
             float mediaProgress = activeClip.mediaStart + ratio * (activeClip.mediaEnd - activeClip.mediaStart);
 
-            // Если мы только зашли в этот клип или юзер кликнул мышкой - заставляем плеер прыгнуть!
             if (doSeek || activeClipIndex != lastActiveClipIndex) {
                 player.Seek(mediaProgress);
             }
@@ -122,27 +135,22 @@ int main(int argc, char* argv[]) {
             player.UpdateAndDraw(renderer, WINDOW_VIEW_W - 300, WINDOW_VIEW_H, targetTimeSec); 
         } 
         else {
-            // МЫ НА ПУСТОМ МЕСТЕ ТАЙМЛАЙНА (Рисуем черный экран и глушим звук)
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_Rect blackScreen = {0, 0, WINDOW_VIEW_W - 300, WINDOW_VIEW_H};
             SDL_RenderFillRect(renderer, &blackScreen);
             
             if (lastActiveClipIndex != -1) {
-                player.ClearAudio(); // Мгновенно рубим звук прошлого клипа!
+                player.ClearAudio(); 
             }
         }
-
         
         lastActiveClipIndex = activeClipIndex;
 
-        // 1. Сначала закидываем меню экспорта в память (если оно открыто)
         exportMenu.Draw(&showExportMenu);
-
-        // 2. Затем ОДНИМ вызовом рисуем и таймлайн, и меню поверх видео
         ui.DrawSurface(renderer); 
 
         SDL_RenderPresent(renderer);
-    } // <--- Конец while (isRunning)
+    } 
 
     ui.Shutdown();
     SDL_DestroyRenderer(renderer);

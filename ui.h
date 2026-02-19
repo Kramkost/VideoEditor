@@ -3,18 +3,28 @@
 #include <string>
 #include <vector>
 
-// TODO: [ВАЖНО] МАГИЯ МОНТАЖА НАЧИНАЕТСЯ ЗДЕСЬ!
-// Теперь клип знает свое место на экране И свое место внутри исходного видео.
+// TODO: [ВАЖНО] ТИПЫ ДОРОЖЕК
+enum TrackType {
+    TRACK_VIDEO,
+    TRACK_AUDIO
+};
+
+// TODO: [ВАЖНО] СТРУКТУРА САМОЙ ДОРОЖКИ
+struct TimelineTrack {
+    std::string name;
+    TrackType type;
+};
+
 struct VideoClip {
     std::string filepath;
-    // === ВРЕМЯ НА ТАЙМЛАЙНЕ (Где находится блок) ===
     float timelineStart; 
     float timelineEnd;   
-    // === ВРЕМЯ ВНУТРИ ФАЙЛА (Какую часть видео играем) ===
     float mediaStart;    
     float mediaEnd;      
-    
     float volume;    
+    
+    // TODO: [ВАЖНО] ИНДЕКС ДОРОЖКИ (0 = Video 1, 1 = Video 2, и т.д.)
+    int trackIndex; 
 };
 
 class UIManager {
@@ -22,10 +32,11 @@ public:
     void Init(SDL_Window* window, SDL_Renderer* renderer);
     void ProcessEvent(const SDL_Event* event);
     
+    // Обновили сигнатуру: теперь передаем список дорожек
     std::string Render(int windowW, int windowH, int uiHeight, 
                        float& progress, bool& isPlaying, bool& doSeek,
                        std::vector<VideoClip>& clips, int& selectedClipIndex, 
-                       bool& showExport);
+                       bool& showExport, const std::vector<TimelineTrack>& tracks);
                        
     void DrawSurface(SDL_Renderer* renderer);
     void Shutdown();
