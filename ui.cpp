@@ -34,14 +34,33 @@ std::string UIManager::OpenFileDialog() {
 std::string UIManager::Render(int windowW, int windowH, int uiHeight, 
                               float& progress, bool& isPlaying, bool& doSeek,
                               std::vector<VideoClip>& clips, int& selectedClipIndex,
-                              bool& showExport, const std::vector<TimelineTrack>& tracks) {
+                              bool& showExport, const std::vector<TimelineTrack>& tracks,
+                              bool& doAddText) {
     std::string selectedFile = "";
     
     ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    // ПРАВАЯ ПАНЕЛЬ (ИНСПЕКТОР С ТРАНСФОРМАЦИЕЙ)
+    // TODO: [МАГИЯ] РИСУЕМ ТЕКСТЫ ПОВЕРХ ВИДЕО (Прямо на заднем фоне окна программы)
+    ImDrawList* bg_draw_list = ImGui::GetBackgroundDrawList();
+    for (int i = 0; i < clips.size(); i++) {
+        // Если это текстовый клип и ползунок сейчас на нем
+        if (clips[i].isText && progress >= clips[i].timelineStart && progress < clips[i].timelineEnd) {
+            float fontSize = 64.0f * clips[i].scale; // Базовый размер 64 + масштаб
+            ImVec2 textSize = ImGui::CalcTextSize(clips[i].textContent.c_str());
+            
+            // Вычисляем координаты, чтобы текст был по центру окна превью + сдвиги юзера
+            float screenX = (windowW - 300) / 2.0f + clips[i].posX - (textSize.x * clips[i].scale) / 2.0f;
+            float screenY = windowH / 2.0f + clips[i].posY - (textSize.y * clips[i].scale) / 2.0f;
+            
+            // Добавляем красивую черную тень (обводку), чтобы текст читался на любом фоне!
+            bg_draw_list->AddText(ImGui::GetFont(), fontSize, ImVec2(screenX + 2, screenY + 2), IM_COL32(0,0,0,255), clips[i].textContent.c_str());
+            bg_draw_list->AddText(ImGui::GetFont(), fontSize, ImVec2(screenX, screenY), IM_COL32(255,255,255,255), clips[i].textContent.c_str());
+        }
+    }
+
+    // === ПРАВАЯ ПАНЕЛЬ (ИНСПЕКТОР) ===
     int rightPanelWidth = 300;
     ImGui::SetNextWindowPos(ImVec2(windowW - rightPanelWidth, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(rightPanelWidth, windowH - uiHeight), ImGuiCond_Always);
@@ -54,26 +73,46 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         ImGui::Text("Selected Clip: %d", selectedClipIndex + 1);
         ImGui::Spacing();
         
+        // Если это текст - показываем поле для ввода!
+        if (clips[selectedClipIndex].isText) {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Text Content");
+            char textBuf[256];
+            strncpy(textBuf, clips[selectedClipIndex].textContent.c_str(), sizeof(textBuf));
+            if (ImGui::InputTextMultiline("##text", textBuf, sizeof(textBuf), ImVec2(-1, 50))) {
+                clips[selectedClipIndex].textContent = std::string(textBuf);
+            }
+            ImGui::Spacing();
+        }
+
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Transform");
         ImGui::DragFloat("Position X", &clips[selectedClipIndex].posX, 1.0f);
         ImGui::DragFloat("Position Y", &clips[selectedClipIndex].posY, 1.0f);
         ImGui::DragFloat("Scale", &clips[selectedClipIndex].scale, 0.01f, 0.01f, 10.0f);
-        ImGui::DragFloat("Rotation", &clips[selectedClipIndex].rotation, 1.0f, -360.0f, 360.0f);
+        if (!clips[selectedClipIndex].isText) ImGui::DragFloat("Rotation", &clips[selectedClipIndex].rotation, 1.0f, -360.0f, 360.0f);
         
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Audio");
-        ImGui::SliderFloat("Volume", &clips[selectedClipIndex].volume, 0.0f, 1.0f, "%.2f");
+        if (!clips[selectedClipIndex].isText) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Audio");
+            ImGui::SliderFloat("Volume", &clips[selectedClipIndex].volume, 0.0f, 1.0f, "%.2f");
+        }
     } else {
         ImGui::TextDisabled("Select a clip to edit properties.");
     }
     ImGui::End();
 
-    // НИЖНЯЯ ПАНЕЛЬ (ТАЙМЛАЙН)
+    // === НИЖНЯЯ ПАНЕЛЬ (ТАЙМЛАЙН) ===
     ImGui::SetNextWindowPos(ImVec2(0, windowH - uiHeight), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(windowW - rightPanelWidth, uiHeight), ImGuiCond_Always);
     ImGui::Begin("Timeline", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
     
     if (ImGui::Button("Open Video")) { selectedFile = OpenFileDialog(); }
+    
+    // TODO: [НОВАЯ КНОПКА] Добавление текста!
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.6f, 0.2f, 1.0f)); 
+    if (ImGui::Button("+ ADD TEXT")) { doAddText = true; }
+    ImGui::PopStyleColor();
+
     ImGui::SameLine();
     if (isPlaying) { if (ImGui::Button("Pause")) isPlaying = false; } 
     else { if (ImGui::Button("Play")) isPlaying = true; }
@@ -130,10 +169,14 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         
         ImU32 clipColor = (i == selectedClipIndex) ? IM_COL32(100, 150, 220, 255) : IM_COL32(50, 100, 160, 255);
         if (tracks[t].type == TRACK_AUDIO && i != selectedClipIndex) clipColor = IM_COL32(50, 160, 100, 255); 
+        if (clips[i].isText && i != selectedClipIndex) clipColor = IM_COL32(160, 100, 50, 255); // Текст делаем оранжевым!
         
         draw_list->AddRectFilled(ImVec2(x1 + 1, currentY + 2), ImVec2(x2 - 1, currentY + trackHeight - 2), clipColor, 4.0f);
         
-        char label[32]; sprintf(label, "Clip %d", i + 1);
+        char label[64]; 
+        if (clips[i].isText) sprintf(label, "Text: %s", clips[i].textContent.c_str());
+        else sprintf(label, "Clip %d", i + 1);
+        
         draw_list->AddText(ImVec2(x1 + 5, currentY + 5), IM_COL32(255, 255, 255, 255), label);
         
         ImGui::SetCursorScreenPos(ImVec2(x1 - 4, currentY));
