@@ -27,7 +27,7 @@ std::string UIManager::OpenFileDialog() {
     ofn.lpstrFilter = "Video Files\0*.mp4;*.mkv;*.avi;*.mov\0All Files\0*.*\0";
     ofn.nFilterIndex = 1;
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
-    if (GetOpenFileNameA(&ofn) == TRUE) return std::string(ofn.lpstrFile);
+    if (GetSaveFileNameA(&ofn) == TRUE) return std::string(ofn.lpstrFile);
     return "";
 }
 
@@ -41,25 +41,36 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    // Правая панель (Инспектор)
+    // ПРАВАЯ ПАНЕЛЬ (ИНСПЕКТОР С ТРАНСФОРМАЦИЕЙ)
     int rightPanelWidth = 300;
     ImGui::SetNextWindowPos(ImVec2(windowW - rightPanelWidth, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(rightPanelWidth, windowH - uiHeight), ImGuiCond_Always);
     ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-    ImGui::Text("Audio Properties");
+    
+    ImGui::Text("Properties");
     ImGui::Separator();
+    
     if (selectedClipIndex >= 0 && selectedClipIndex < clips.size()) {
-        ImGui::Text("Clip: Segment %d", selectedClipIndex + 1);
+        ImGui::Text("Selected Clip: %d", selectedClipIndex + 1);
         ImGui::Spacing();
+        
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Transform");
+        ImGui::DragFloat("Position X", &clips[selectedClipIndex].posX, 1.0f);
+        ImGui::DragFloat("Position Y", &clips[selectedClipIndex].posY, 1.0f);
+        ImGui::DragFloat("Scale", &clips[selectedClipIndex].scale, 0.01f, 0.01f, 10.0f);
+        ImGui::DragFloat("Rotation", &clips[selectedClipIndex].rotation, 1.0f, -360.0f, 360.0f);
+        
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Audio");
         ImGui::SliderFloat("Volume", &clips[selectedClipIndex].volume, 0.0f, 1.0f, "%.2f");
     } else {
         ImGui::TextDisabled("Select a clip to edit properties.");
     }
     ImGui::End();
 
-    // Нижняя панель (Мультитрек-Таймлайн)
+    // НИЖНЯЯ ПАНЕЛЬ (ТАЙМЛАЙН)
     ImGui::SetNextWindowPos(ImVec2(0, windowH - uiHeight), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(windowW, uiHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(windowW - rightPanelWidth, uiHeight), ImGuiCond_Always);
     ImGui::Begin("Timeline", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
     
     if (ImGui::Button("Open Video")) { selectedFile = OpenFileDialog(); }
@@ -97,39 +108,34 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     
     ImVec2 p = ImGui::GetCursorScreenPos();
     float trackWidth = ImGui::GetContentRegionAvail().x;
-    float trackHeight = 40.0f; // Сделали чуть тоньше, чтобы влезло больше дорожек
+    float trackHeight = 40.0f;
     float trackSpacing = 4.0f;
     float totalTimelineHeight = tracks.size() * (trackHeight + trackSpacing);
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-    // TODO: [ВАЖНО] 1. РИСУЕМ ФОНЫ ВСЕХ ДОРОЖЕК
     for (int t = 0; t < tracks.size(); ++t) {
         float currentY = p.y + t * (trackHeight + trackSpacing);
-        // Видео - серый фон, Аудио - темно-зеленый фон
         ImU32 bgColor = (tracks[t].type == TRACK_VIDEO) ? IM_COL32(40, 40, 45, 255) : IM_COL32(35, 45, 40, 255);
         draw_list->AddRectFilled(ImVec2(p.x, currentY), ImVec2(p.x + trackWidth, currentY + trackHeight), bgColor);
         draw_list->AddText(ImVec2(p.x + 5, currentY + 5), IM_COL32(150, 150, 150, 255), tracks[t].name.c_str());
     }
 
-    // TODO: [ВАЖНО] 2. РИСУЕМ КЛИПЫ И ОБРАБАТЫВАЕМ ПЕРЕТАСКИВАНИЕ МЕЖДУ СЛОЯМИ
     for (int i = 0; i < clips.size(); i++) {
         int t = clips[i].trackIndex;
-        if (t < 0 || t >= tracks.size()) continue; // Защита от краша
+        if (t < 0 || t >= tracks.size()) continue; 
 
         float currentY = p.y + t * (trackHeight + trackSpacing);
         float x1 = p.x + (clips[i].timelineStart * trackWidth);
         float x2 = p.x + (clips[i].timelineEnd * trackWidth);
         
-        // Раскрашиваем клипы
         ImU32 clipColor = (i == selectedClipIndex) ? IM_COL32(100, 150, 220, 255) : IM_COL32(50, 100, 160, 255);
-        if (tracks[t].type == TRACK_AUDIO && i != selectedClipIndex) clipColor = IM_COL32(50, 160, 100, 255); // Аудио клипы - зеленые
+        if (tracks[t].type == TRACK_AUDIO && i != selectedClipIndex) clipColor = IM_COL32(50, 160, 100, 255); 
         
         draw_list->AddRectFilled(ImVec2(x1 + 1, currentY + 2), ImVec2(x2 - 1, currentY + trackHeight - 2), clipColor, 4.0f);
         
         char label[32]; sprintf(label, "Clip %d", i + 1);
         draw_list->AddText(ImVec2(x1 + 5, currentY + 5), IM_COL32(255, 255, 255, 255), label);
         
-        // --- ЛЕВЫЙ КРАЙ (TRIM) ---
         ImGui::SetCursorScreenPos(ImVec2(x1 - 4, currentY));
         ImGui::InvisibleButton((std::string("left_") + std::to_string(i)).c_str(), ImVec2(8, trackHeight));
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
@@ -137,12 +143,10 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
             if (clips[i].mediaStart + delta < 0.0f) delta = -clips[i].mediaStart;
             if (clips[i].timelineStart + delta >= clips[i].timelineEnd - 0.01f) delta = clips[i].timelineEnd - clips[i].timelineStart - 0.01f;
-            clips[i].timelineStart += delta;
-            clips[i].mediaStart += delta; 
+            clips[i].timelineStart += delta; clips[i].mediaStart += delta; 
             progress = clips[i].timelineStart; doSeek = true; selectedClipIndex = i;
         }
 
-        // --- ПРАВЫЙ КРАЙ (TRIM) ---
         ImGui::SetCursorScreenPos(ImVec2(x2 - 4, currentY));
         ImGui::InvisibleButton((std::string("right_") + std::to_string(i)).c_str(), ImVec2(8, trackHeight));
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
@@ -150,32 +154,25 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
             if (clips[i].mediaEnd + delta > 1.0f) delta = 1.0f - clips[i].mediaEnd;
             if (clips[i].timelineEnd + delta <= clips[i].timelineStart + 0.01f) delta = clips[i].timelineStart + 0.01f - clips[i].timelineEnd;
-            clips[i].timelineEnd += delta;
-            clips[i].mediaEnd += delta;
+            clips[i].timelineEnd += delta; clips[i].mediaEnd += delta;
             progress = clips[i].timelineEnd; doSeek = true; selectedClipIndex = i;
         }
 
-        // --- ТЕЛО КЛИПА (Drag & Drop ПО ОСИ X и Y) ---
         ImGui::SetCursorScreenPos(ImVec2(x1 + 4, currentY));
         ImGui::InvisibleButton((std::string("body_") + std::to_string(i)).c_str(), ImVec2(x2 - x1 - 8, trackHeight));
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         if (ImGui::IsItemClicked()) selectedClipIndex = i;
         
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
-            // Перемещение по X (Время)
             float deltaX = ImGui::GetIO().MouseDelta.x / trackWidth;
             if (clips[i].timelineStart + deltaX < 0.0f) deltaX = -clips[i].timelineStart;
             if (clips[i].timelineEnd + deltaX > 1.0f) deltaX = 1.0f - clips[i].timelineEnd;
-            clips[i].timelineStart += deltaX;
-            clips[i].timelineEnd += deltaX;
+            clips[i].timelineStart += deltaX; clips[i].timelineEnd += deltaX;
             progress = clips[i].timelineStart; doSeek = true;
 
-            // TODO: [ВАЖНО] Перемещение по Y (Смена дорожки!)
             float mouse_y = ImGui::GetMousePos().y;
             int hoveredTrack = (mouse_y - p.y) / (trackHeight + trackSpacing);
-            // Если мышка перешла на другой трек:
             if (hoveredTrack >= 0 && hoveredTrack < tracks.size()) {
-                // Защита: разрешаем класть видео только на видео-треки, а аудио на аудио!
                 if (tracks[hoveredTrack].type == tracks[clips[i].trackIndex].type) {
                     clips[i].trackIndex = hoveredTrack;
                 }
@@ -183,12 +180,10 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         }
     }
 
-    // 3. Playhead (Красная линия - теперь рисуется поверх ВСЕХ дорожек)
     float playheadX = p.x + (progress * trackWidth);
     draw_list->AddLine(ImVec2(playheadX, p.y - 10), ImVec2(playheadX, p.y + totalTimelineHeight + 10), IM_COL32(255, 50, 50, 255), 2.0f);
     draw_list->AddTriangleFilled(ImVec2(playheadX - 6, p.y - 10), ImVec2(playheadX + 6, p.y - 10), ImVec2(playheadX, p.y), IM_COL32(255, 50, 50, 255));
 
-    // Клик по пустой зоне для перемотки
     ImGui::SetCursorScreenPos(ImVec2(p.x, p.y));
     ImGui::InvisibleButton("##TrackArea", ImVec2(trackWidth, totalTimelineHeight));
     if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {

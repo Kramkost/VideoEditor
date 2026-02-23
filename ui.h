@@ -3,13 +3,11 @@
 #include <string>
 #include <vector>
 
-// TODO: [ВАЖНО] ТИПЫ ДОРОЖЕК
 enum TrackType {
     TRACK_VIDEO,
     TRACK_AUDIO
 };
 
-// TODO: [ВАЖНО] СТРУКТУРА САМОЙ ДОРОЖКИ
 struct TimelineTrack {
     std::string name;
     TrackType type;
@@ -22,9 +20,13 @@ struct VideoClip {
     float mediaStart;    
     float mediaEnd;      
     float volume;    
-    
-    // TODO: [ВАЖНО] ИНДЕКС ДОРОЖКИ (0 = Video 1, 1 = Video 2, и т.д.)
     int trackIndex; 
+    
+    // ПАРАМЕТРЫ ТРАНСФОРМАЦИИ
+    float posX = 0.0f;     
+    float posY = 0.0f;     
+    float scale = 1.0f;    
+    float rotation = 0.0f; 
 };
 
 class UIManager {
@@ -32,7 +34,6 @@ public:
     void Init(SDL_Window* window, SDL_Renderer* renderer);
     void ProcessEvent(const SDL_Event* event);
     
-    // Обновили сигнатуру: теперь передаем список дорожек
     std::string Render(int windowW, int windowH, int uiHeight, 
                        float& progress, bool& isPlaying, bool& doSeek,
                        std::vector<VideoClip>& clips, int& selectedClipIndex, 

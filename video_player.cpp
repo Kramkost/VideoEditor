@@ -55,7 +55,6 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
         pFrameBGR = av_frame_alloc();
 
         if (isImage) {
-            av_seek_frame(formatCtx, -1, 0, AVSEEK_FLAG_BACKWARD);
             AVPacket* tempPkt = av_packet_alloc();
             bool decoded = false;
             
@@ -68,22 +67,19 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
             }
             av_packet_free(&tempPkt);
 
-            // TODO: [БРОНЕБОЙНЫЙ ФИКС КАРТИНОК] 
-            // Форсируем отдачу кадра (Flush декодера)! Выплевываем то, что застряло в памяти WebP/JPEG.
             if (!decoded) {
-                avcodec_send_packet(videoCodecCtx, nullptr); // Отправляем сигнал "конец файла"
+                avcodec_send_packet(videoCodecCtx, nullptr); 
                 if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
                     decoded = true;
                 }
             }
 
-            // Защита от нулевого размера (0x0 is invalid scaling dimension)
             int frameW = pFrame->width > 0 ? pFrame->width : videoCodecCtx->width;
             int frameH = pFrame->height > 0 ? pFrame->height : videoCodecCtx->height;
 
             if (!decoded || frameW <= 0 || frameH <= 0) {
                 std::cerr << "ERROR: Unreadable image format or 0x0 size: " << filepath << std::endl;
-                CloseVideo(); // Мягко отменяем загрузку файла, чтобы прога не крашнулась
+                CloseVideo(); 
                 return false;
             }
 
@@ -147,7 +143,7 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
     return true;
 }
 
-void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec, bool drawVideo) {
+void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec, bool drawVideo, float posX, float posY, float scale, float rotation) {
     if (!isLoaded) return;
 
     bool frameDecoded = false; 
@@ -208,15 +204,20 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH
 
         float scaleW = (float)windowW / texW;
         float scaleH = (float)windowH / texH;
-        float finalScale = std::min(scaleW, scaleH);
+        float baseScale = std::min(scaleW, scaleH);
+        
+        float finalScale = baseScale * scale; 
         
         int finalW = (int)(texW * finalScale);
         int finalH = (int)(texH * finalScale);
-        int xOffset = (windowW - finalW) / 2;
-        int yOffset = (windowH - finalH) / 2;
         
-        SDL_Rect videoRect = {xOffset, yOffset, finalW, finalH};
-        SDL_RenderCopy(renderer, texture, nullptr, &videoRect);
+        if (finalW > 0 && finalH > 0) {
+            int xOffset = (windowW - finalW) / 2 + (int)posX;
+            int yOffset = (windowH - finalH) / 2 + (int)posY;
+            
+            SDL_Rect videoRect = {xOffset, yOffset, finalW, finalH};
+            SDL_RenderCopyEx(renderer, texture, nullptr, &videoRect, (double)rotation, nullptr, SDL_FLIP_NONE);
+        }
     }
 }
 

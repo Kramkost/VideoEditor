@@ -19,13 +19,13 @@ public:
 
     bool LoadVideo(const std::string& filepath, SDL_Renderer* renderer);
     void CloseVideo();
-    void UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec, bool drawVideo);
+    void UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec, bool drawVideo, float posX = 0.0f, float posY = 0.0f, float scale = 1.0f, float rotation = 0.0f);
     
     float GetProgress();
     void Seek(float progress);
     void ClearAudio();
     double GetDurationSeconds();
-    double GetCurrentSec(); // НОВОЕ: Нужно для умного избегания микрофризов
+    double GetCurrentSec(); 
 
     bool isPlaying = false;
     float currentVolume = 1.0f;

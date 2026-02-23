@@ -1,7 +1,7 @@
 ﻿#include <iostream>
 #include <string>
 #include <vector>
-#include <cmath> // Для std::abs
+#include <cmath> 
 #include "export_ui.h"
 
 #define SDL_MAIN_HANDLED
@@ -69,7 +69,8 @@ int main(int argc, char* argv[]) {
                 if (end > 1.0f) end = 1.0f;
                 if (projectClips.empty()) { start = 0.0f; end = 1.0f; }
 
-                projectClips.push_back({droppedFile, start, end, 0.0f, 1.0f, 1.0f, 0});
+                // ВОТ ОН! Правильный блок для DROPFILE с новыми координатами
+                projectClips.push_back({droppedFile, start, end, 0.0f, 1.0f, 1.0f, 0, 0.0f, 0.0f, 1.0f, 0.0f});
                 selectedClipIndex = projectClips.size() - 1;
             }
             
@@ -94,7 +95,8 @@ int main(int argc, char* argv[]) {
         std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, currentProgress, isPlaying, doSeek, projectClips, selectedClipIndex, showExportMenu, projectTracks);
                                            
         if (!newFile.empty()) {
-            projectClips.push_back({newFile, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0});
+            // А ЭТО ПРАВИЛЬНЫЙ БЛОК для кнопки Open Video (тут нет переменных start и droppedFile)
+            projectClips.push_back({newFile, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0, 0.0f, 0.0f, 1.0f, 0.0f});
             selectedClipIndex = projectClips.size() - 1;
             currentProgress = 0.0f; 
         }
@@ -122,11 +124,9 @@ int main(int argc, char* argv[]) {
                 float mediaProgress = activeClip.mediaStart + ratio * (activeClip.mediaEnd - activeClip.mediaStart);
                 double targetTimeSec = mediaProgress * players[t]->GetDurationSeconds();
 
-                // TODO: [ГЛАВНЫЙ ФИКС ЛАГОВ ПРИ РАЗРЕЗАНИИ (CUT)]
                 if (doSeek) {
                     players[t]->Seek(mediaProgress);
                 } else if (activeClipIndex != lastActiveClipPerTrack[t]) {
-                    // Если клип сменился, но время идет подряд (просто разрезанный кусок) - НЕ ДЕЛАЕМ SEEK!
                     if (std::abs(targetTimeSec - players[t]->GetCurrentSec()) > 0.1) {
                         players[t]->Seek(mediaProgress);
                     }
@@ -136,7 +136,8 @@ int main(int argc, char* argv[]) {
                 players[t]->currentVolume = activeClip.volume;
                 
                 bool isVideoTrack = (projectTracks[t].type == TRACK_VIDEO);
-                players[t]->UpdateAndDraw(renderer, WINDOW_VIEW_W - 300, WINDOW_VIEW_H, targetTimeSec, isVideoTrack); 
+                players[t]->UpdateAndDraw(renderer, WINDOW_VIEW_W - 300, WINDOW_VIEW_H, targetTimeSec, isVideoTrack, 
+                                          activeClip.posX, activeClip.posY, activeClip.scale, activeClip.rotation); 
             } 
             else {
                 players[t]->isPlaying = false;
