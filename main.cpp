@@ -51,8 +51,6 @@ int main(int argc, char* argv[]) {
     float currentProgress = 0.0f; 
 
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
-
-    // Для мышки
     int lastMouseX = 0, lastMouseY = 0;
 
     while (isRunning) {
@@ -73,8 +71,8 @@ int main(int argc, char* argv[]) {
                 if (end > 1.0f) end = 1.0f;
                 if (projectClips.empty()) { start = 0.0f; end = 1.0f; }
 
-                // Обновили инициализацию (добавили false и "" для текста)
-                projectClips.push_back({droppedFile, start, end, 0.0f, 1.0f, 1.0f, 0, 0.0f, 0.0f, 1.0f, 0.0f, false, ""});
+                // ИСПОЛЬЗУЕМ КРАСИВЫЙ КОНСТРУКТОР
+                projectClips.push_back(VideoClip(droppedFile, start, end, 0));
                 selectedClipIndex = projectClips.size() - 1;
             }
             
@@ -85,19 +83,34 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // TODO: [МАГИЯ ИНТЕРАКТИВНОСТИ] Перехват мыши для перемещения объектов по экрану!
+        int leftPanelW = 220;
+        int rightPanelW = 300;
+        int viewW = WINDOW_VIEW_W - leftPanelW - rightPanelW;
+        
         int mouseX, mouseY;
         Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
-        // Проверяем, что мышь над зоной видео (левее Инспектора и выше Таймлайна)
-        bool inPreviewArea = (mouseX < WINDOW_VIEW_W - 300) && (mouseY < WINDOW_VIEW_H);
+        bool inPreviewArea = (mouseX > leftPanelW) && (mouseX < WINDOW_VIEW_W - rightPanelW) && (mouseY < WINDOW_VIEW_H);
         
-        // ImGui::GetIO().WantCaptureMouse = false значит, что мы сейчас НЕ кликаем по меню или ползункам
+        // TODO: [ИНТЕРАКТИВНОЕ ДОБАВЛЕНИЕ КЛЮЧЕЙ МЫШКОЙ]
         if (inPreviewArea && (mouseState & SDL_BUTTON(SDL_BUTTON_LEFT)) && !ImGui::GetIO().WantCaptureMouse) {
             if (selectedClipIndex != -1 && selectedClipIndex < projectClips.size()) {
                 float dx = mouseX - lastMouseX;
                 float dy = mouseY - lastMouseY;
-                projectClips[selectedClipIndex].posX += dx;
-                projectClips[selectedClipIndex].posY += dy;
+                
+                auto& clip = projectClips[selectedClipIndex];
+                float len = clip.timelineEnd - clip.timelineStart;
+                float locProg = (len > 0.001f) ? (currentProgress - clip.timelineStart) / len : 0.0f;
+                
+                // Если включена анимация, движение мышки создает ключ (Keyframe)
+                if (clip.animX.isAnimated) {
+                    float curValX = clip.animX.GetValue(locProg, clip.posX);
+                    clip.animX.AddOrUpdateKey(locProg, curValX + dx);
+                } else clip.posX += dx;
+
+                if (clip.animY.isAnimated) {
+                    float curValY = clip.animY.GetValue(locProg, clip.posY);
+                    clip.animY.AddOrUpdateKey(locProg, curValY + dy);
+                } else clip.posY += dy;
             }
         }
         lastMouseX = mouseX; lastMouseY = mouseY;
@@ -113,25 +126,22 @@ int main(int argc, char* argv[]) {
         }
 
         bool doSeek = false;
-        bool doAddText = false; // Новая переменная-сигнал
-        std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, currentProgress, isPlaying, doSeek, projectClips, selectedClipIndex, showExportMenu, projectTracks, doAddText);
+        bool doAddText = false; 
+        bool effectChanged = false; 
+        std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, currentProgress, isPlaying, doSeek, projectClips, selectedClipIndex, showExportMenu, projectTracks, doAddText, effectChanged);
                                            
-        // Если юзер нажал "Open Video"
         if (!newFile.empty()) {
-            projectClips.push_back({newFile, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0, 0.0f, 0.0f, 1.0f, 0.0f, false, ""});
+            projectClips.push_back(VideoClip(newFile, 0.0f, 1.0f, 0));
             selectedClipIndex = projectClips.size() - 1;
             currentProgress = 0.0f; 
         }
 
-        // TODO: [НОВОЕ] Если юзер нажал кнопку "+ ADD TEXT"
         if (doAddText) {
             float start = currentProgress;
             float end = start + 0.15f; 
             if (end > 1.0f) end = 1.0f;
             if (projectClips.empty()) { start = 0.0f; end = 1.0f; }
-
-            // Создаем клип типа ТЕКСТ (кладем его на дорожку 1 "Overlay", чтобы был поверх основного видео)
-            projectClips.push_back({"", start, end, 0.0f, 1.0f, 1.0f, 1, 0.0f, 0.0f, 1.0f, 0.0f, true, "YOUR TEXT HERE"});
+            projectClips.push_back(VideoClip("", start, end, 1, true, "YOUR TEXT HERE"));
             selectedClipIndex = projectClips.size() - 1;
         }
 
@@ -150,19 +160,20 @@ int main(int argc, char* argv[]) {
             if (activeClipIndex != -1) {
                 VideoClip& activeClip = projectClips[activeClipIndex];
                 
-                // Если это ТЕКСТ, мы не даем движку FFmpeg пытаться его прочитать! (Это бы вызвало краш)
                 if (activeClip.isText) {
                     players[t]->isPlaying = false;
                     if (lastActiveClipPerTrack[t] != -1) players[t]->ClearAudio(); 
                 } 
                 else {
-                    // Классическая логика видео/фото
                     if (players[t]->loadedFilepath != activeClip.filepath) {
                         players[t]->LoadVideo(activeClip.filepath, renderer);
                     }
+                    if (effectChanged) players[t]->textureNeedsUpdate = true;
 
-                    float ratio = (currentProgress - activeClip.timelineStart) / (activeClip.timelineEnd - activeClip.timelineStart);
-                    float mediaProgress = activeClip.mediaStart + ratio * (activeClip.mediaEnd - activeClip.mediaStart);
+                    float len = activeClip.timelineEnd - activeClip.timelineStart;
+                    float localProg = (len > 0.001f) ? (currentProgress - activeClip.timelineStart) / len : 0.0f;
+                    
+                    float mediaProgress = activeClip.mediaStart + localProg * (activeClip.mediaEnd - activeClip.mediaStart);
                     double targetTimeSec = mediaProgress * players[t]->GetDurationSeconds();
 
                     if (doSeek) {
@@ -177,8 +188,16 @@ int main(int argc, char* argv[]) {
                     players[t]->currentVolume = activeClip.volume;
                     
                     bool isVideoTrack = (projectTracks[t].type == TRACK_VIDEO);
-                    players[t]->UpdateAndDraw(renderer, WINDOW_VIEW_W - 300, WINDOW_VIEW_H, targetTimeSec, isVideoTrack, 
-                                              activeClip.posX, activeClip.posY, activeClip.scale, activeClip.rotation); 
+
+                    // TODO: [СИЛА КРИВЫХ БЕЗЬЕ В ДЕЙСТВИИ]
+                    // Отдаем плееру интерполированные значения!
+                    float currentPosX = activeClip.animX.GetValue(localProg, activeClip.posX);
+                    float currentPosY = activeClip.animY.GetValue(localProg, activeClip.posY);
+                    float currentScale = activeClip.animScale.GetValue(localProg, activeClip.scale);
+                    float currentRot = activeClip.animRot.GetValue(localProg, activeClip.rotation);
+
+                    players[t]->UpdateAndDraw(renderer, leftPanelW, 0, viewW, WINDOW_VIEW_H, targetTimeSec, isVideoTrack, 
+                                              currentPosX, currentPosY, currentScale, currentRot, activeClip.effects); 
                 }
             } 
             else {

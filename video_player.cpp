@@ -53,6 +53,7 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
 
         pFrame = av_frame_alloc(); 
         pFrameBGR = av_frame_alloc();
+        pFrameEffects = av_frame_alloc();
 
         if (isImage) {
             AVPacket* tempPkt = av_packet_alloc();
@@ -69,16 +70,13 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
 
             if (!decoded) {
                 avcodec_send_packet(videoCodecCtx, nullptr); 
-                if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
-                    decoded = true;
-                }
+                if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) decoded = true;
             }
 
-            int frameW = pFrame->width > 0 ? pFrame->width : videoCodecCtx->width;
-            int frameH = pFrame->height > 0 ? pFrame->height : videoCodecCtx->height;
+            frameW = pFrame->width > 0 ? pFrame->width : videoCodecCtx->width;
+            frameH = pFrame->height > 0 ? pFrame->height : videoCodecCtx->height;
 
             if (!decoded || frameW <= 0 || frameH <= 0) {
-                std::cerr << "ERROR: Unreadable image format or 0x0 size: " << filepath << std::endl;
                 CloseVideo(); 
                 return false;
             }
@@ -86,34 +84,38 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
             AVPixelFormat actualFormat = FixDeprecatedFormat((AVPixelFormat)pFrame->format);
             if (actualFormat == AV_PIX_FMT_NONE) actualFormat = FixDeprecatedFormat(videoCodecCtx->pix_fmt);
 
-            sws_ctx = sws_getContext(frameW, frameH, actualFormat,
-                                     frameW, frameH, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
-
+            sws_ctx = sws_getContext(frameW, frameH, actualFormat, frameW, frameH, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
             texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, frameW, frameH);
             SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
 
             int numBytes = av_image_get_buffer_size(AV_PIX_FMT_BGRA, frameW, frameH, 1);
             videoBuffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+            effectsBuffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+            
             av_image_fill_arrays(pFrameBGR->data, pFrameBGR->linesize, videoBuffer, AV_PIX_FMT_BGRA, frameW, frameH, 1);
+            av_image_fill_arrays(pFrameEffects->data, pFrameEffects->linesize, effectsBuffer, AV_PIX_FMT_BGRA, frameW, frameH, 1);
 
             if (sws_ctx && pFrame->data[0]) {
                 sws_scale(sws_ctx, pFrame->data, pFrame->linesize, 0, frameH, pFrameBGR->data, pFrameBGR->linesize);
-                SDL_UpdateTexture(texture, nullptr, pFrameBGR->data[0], pFrameBGR->linesize[0]);
+                textureNeedsUpdate = true; // Триггерим отрисовку для картинок
             }
         } 
         else {
+            frameW = videoCodecCtx->width;
+            frameH = videoCodecCtx->height;
             AVPixelFormat fmt = FixDeprecatedFormat(videoCodecCtx->pix_fmt);
             if (fmt == AV_PIX_FMT_NONE) fmt = AV_PIX_FMT_YUV420P; 
 
-            sws_ctx = sws_getContext(videoCodecCtx->width, videoCodecCtx->height, fmt,
-                                     videoCodecCtx->width, videoCodecCtx->height, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
-
-            texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, videoCodecCtx->width, videoCodecCtx->height);
+            sws_ctx = sws_getContext(frameW, frameH, fmt, frameW, frameH, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+            texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, frameW, frameH);
             SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
 
-            int numBytes = av_image_get_buffer_size(AV_PIX_FMT_BGRA, videoCodecCtx->width, videoCodecCtx->height, 1);
+            int numBytes = av_image_get_buffer_size(AV_PIX_FMT_BGRA, frameW, frameH, 1);
             videoBuffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
-            av_image_fill_arrays(pFrameBGR->data, pFrameBGR->linesize, videoBuffer, AV_PIX_FMT_BGRA, videoCodecCtx->width, videoCodecCtx->height, 1);
+            effectsBuffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+            
+            av_image_fill_arrays(pFrameBGR->data, pFrameBGR->linesize, videoBuffer, AV_PIX_FMT_BGRA, frameW, frameH, 1);
+            av_image_fill_arrays(pFrameEffects->data, pFrameEffects->linesize, effectsBuffer, AV_PIX_FMT_BGRA, frameW, frameH, 1);
         }
     }
 
@@ -143,7 +145,7 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
     return true;
 }
 
-void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec, bool drawVideo, float posX, float posY, float scale, float rotation) {
+void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, int viewW, int viewH, double targetTimeSec, bool drawVideo, float posX, float posY, float scale, float rotation, const std::vector<EffectParams>& effects) {
     if (!isLoaded) return;
 
     bool frameDecoded = false; 
@@ -152,16 +154,12 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH
         if (audioDevice) SDL_PauseAudioDevice(audioDevice, 0); 
         
         if (!isImage) {
-            if (targetTimeSec - currentSec > 0.15) {
-                videoCodecCtx->skip_frame = AVDISCARD_NONREF; 
-            } else {
-                videoCodecCtx->skip_frame = AVDISCARD_DEFAULT;
-            }
+            if (targetTimeSec - currentSec > 0.15) videoCodecCtx->skip_frame = AVDISCARD_NONREF; 
+            else videoCodecCtx->skip_frame = AVDISCARD_DEFAULT;
 
             int loopProtection = 0; 
             while (currentSec <= targetTimeSec && loopProtection < 10 && av_read_frame(formatCtx, pPacket) >= 0) {
                 loopProtection++;
-                
                 if (pPacket->stream_index == videoStreamIndex) {
                     avcodec_send_packet(videoCodecCtx, pPacket);
                     if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
@@ -177,8 +175,7 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH
                             int out_samples = swr_convert(swrCtx, &audioBuffer, 192000, (const uint8_t**)aFrame->data, aFrame->nb_samples);
                             int data_size = out_samples * 2 * 2; 
                             int16_t* samples = (int16_t*)audioBuffer;
-                            int num_samples = data_size / 2; 
-                            for (int i = 0; i < num_samples; i++) samples[i] = (int16_t)(samples[i] * currentVolume);
+                            for (int i = 0; i < data_size / 2; i++) samples[i] = (int16_t)(samples[i] * currentVolume);
                             SDL_QueueAudio(audioDevice, audioBuffer, data_size);
                         }
                     }
@@ -190,30 +187,36 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH
         if (audioDevice) SDL_PauseAudioDevice(audioDevice, 1);
     }
 
-    if (!isImage && drawVideo && (frameDecoded || textureNeedsUpdate) && videoStreamIndex != -1) {
-        if (pFrame && pFrame->data[0] != nullptr && sws_ctx) {
-            sws_scale(sws_ctx, (uint8_t const * const *)pFrame->data, pFrame->linesize, 0, videoCodecCtx->height, pFrameBGR->data, pFrameBGR->linesize);
-            SDL_UpdateTexture(texture, nullptr, pFrameBGR->data[0], pFrameBGR->linesize[0]);
+    // TODO: [МАГИЯ ЭФФЕКТОВ НА ПИКСЕЛЯХ]
+    if (drawVideo && (frameDecoded || textureNeedsUpdate) && videoStreamIndex != -1) {
+        if (!isImage && pFrame && pFrame->data[0] != nullptr && sws_ctx) {
+            sws_scale(sws_ctx, (uint8_t const * const *)pFrame->data, pFrame->linesize, 0, frameH, pFrameBGR->data, pFrameBGR->linesize);
         }
+        
+        // 1. Берем чистую копию кадра
+        memcpy(pFrameEffects->data[0], pFrameBGR->data[0], pFrameBGR->linesize[0] * frameH);
+        
+        // 2. Накладываем все эффекты через наш PluginManager!
+        PluginManager::ApplyPlugins(pFrameEffects->data[0], frameW, frameH, pFrameEffects->linesize[0], effects);
+        
+        // 3. Отправляем на видеокарту
+        SDL_UpdateTexture(texture, nullptr, pFrameEffects->data[0], pFrameEffects->linesize[0]);
         textureNeedsUpdate = false; 
     }
 
+    // ОТРИСОВКА НА ЭКРАН
     if (drawVideo && videoStreamIndex != -1 && texture) {
-        int texW = 0, texH = 0;
-        SDL_QueryTexture(texture, nullptr, nullptr, &texW, &texH); 
-
-        float scaleW = (float)windowW / texW;
-        float scaleH = (float)windowH / texH;
+        float scaleW = (float)viewW / frameW;
+        float scaleH = (float)viewH / frameH;
         float baseScale = std::min(scaleW, scaleH);
-        
         float finalScale = baseScale * scale; 
         
-        int finalW = (int)(texW * finalScale);
-        int finalH = (int)(texH * finalScale);
+        int finalW = (int)(frameW * finalScale);
+        int finalH = (int)(frameH * finalScale);
         
         if (finalW > 0 && finalH > 0) {
-            int xOffset = (windowW - finalW) / 2 + (int)posX;
-            int yOffset = (windowH - finalH) / 2 + (int)posY;
+            int xOffset = viewX + (viewW - finalW) / 2 + (int)posX;
+            int yOffset = viewY + (viewH - finalH) / 2 + (int)posY;
             
             SDL_Rect videoRect = {xOffset, yOffset, finalW, finalH};
             SDL_RenderCopyEx(renderer, texture, nullptr, &videoRect, (double)rotation, nullptr, SDL_FLIP_NONE);
@@ -245,7 +248,6 @@ void VideoPlayer::Seek(float progress) {
     } else {
         currentSec = target_pts_av / (double)AV_TIME_BASE; 
     }
-
     textureNeedsUpdate = true; 
 }
 
@@ -259,16 +261,16 @@ void VideoPlayer::CloseVideo() {
     if (audioDevice) { SDL_CloseAudioDevice(audioDevice); audioDevice = 0; }
     if (swrCtx) { swr_free(&swrCtx); }
     if (audioBuffer) { av_free(audioBuffer); audioBuffer = nullptr; }
+    if (effectsBuffer) { av_free(effectsBuffer); effectsBuffer = nullptr; }
     if (aFrame) { av_frame_free(&aFrame); aFrame = nullptr; }
     if (audioCodecCtx) { avcodec_free_context(&audioCodecCtx); audioCodecCtx = nullptr; }
     if (videoBuffer) { av_free(videoBuffer); videoBuffer = nullptr; }
     if (pFrame) { av_frame_free(&pFrame); pFrame = nullptr; }
     if (pFrameBGR) { av_frame_free(&pFrameBGR); pFrameBGR = nullptr; }
+    if (pFrameEffects) { av_frame_free(&pFrameEffects); pFrameEffects = nullptr; }
     if (pPacket) { av_packet_free(&pPacket); pPacket = nullptr; }
     if (sws_ctx) { sws_freeContext(sws_ctx); sws_ctx = nullptr; }
     if (videoCodecCtx) { avcodec_free_context(&videoCodecCtx); videoCodecCtx = nullptr; }
     if (formatCtx) { avformat_close_input(&formatCtx); formatCtx = nullptr; }
     if (texture) { SDL_DestroyTexture(texture); texture = nullptr; }
 }
-
-float VideoPlayer::GetProgress() { return (float)(currentSec / durationSec); }

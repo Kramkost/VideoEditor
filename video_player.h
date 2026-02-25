@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <SDL2/SDL.h>
+#include "plugins.h" // Подключаем плагины
 
 extern "C" {
     #include <libavcodec/avcodec.h>
@@ -19,7 +20,9 @@ public:
 
     bool LoadVideo(const std::string& filepath, SDL_Renderer* renderer);
     void CloseVideo();
-    void UpdateAndDraw(SDL_Renderer* renderer, int windowW, int windowH, double targetTimeSec, bool drawVideo, float posX = 0.0f, float posY = 0.0f, float scale = 1.0f, float rotation = 0.0f);
+    
+    // Передаем список эффектов в отрисовку
+    void UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, int viewW, int viewH, double targetTimeSec, bool drawVideo, float posX, float posY, float scale, float rotation, const std::vector<EffectParams>& effects);
     
     float GetProgress();
     void Seek(float progress);
@@ -42,9 +45,13 @@ private:
     AVCodecContext* videoCodecCtx = nullptr; 
     int videoStreamIndex = -1;
     SwsContext* sws_ctx = nullptr;
+    
+    int frameW = 0, frameH = 0; // Сохраняем размеры кадра
     AVFrame* pFrame = nullptr;
-    AVFrame* pFrameBGR = nullptr;
+    AVFrame* pFrameBGR = nullptr; // Оригинал
+    AVFrame* pFrameEffects = nullptr; // Измененный кадр с эффектами
     uint8_t* videoBuffer = nullptr;
+    uint8_t* effectsBuffer = nullptr;
     SDL_Texture* texture = nullptr;
     
     AVCodecContext* audioCodecCtx = nullptr;
