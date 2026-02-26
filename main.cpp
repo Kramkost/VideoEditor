@@ -28,6 +28,8 @@ int main(int argc, char* argv[]) {
     ExportUI exportMenu;        
     bool showExportMenu = false;
 
+    PluginManager::InitAndScanPlugins();
+
     std::vector<TimelineTrack> projectTracks = {
         {"Video 1 (Main)", TRACK_VIDEO},
         {"Video 2 (Overlay)", TRACK_VIDEO},

@@ -33,3 +33,13 @@ target_link_libraries(Editor
     "${LIBS_DIR}/ffmpeg/lib/swscale.lib"
     ${WIN_LIBS}
 )
+
+# --- 3. СИСТЕМА ПЛАГИНОВ (АВТОМАТИЧЕСКАЯ СБОРКА DLL) ---
+# Говорим CMake собрать blood_filter.cpp как разделяемую библиотеку (SHARED = DLL)
+add_library(blood_filter SHARED blood_filter.cpp)
+
+# Настраиваем, чтобы DLL сохранялась прямо в папку plugins рядом с Editor.exe
+set_target_properties(blood_filter PROPERTIES 
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins"
+    PREFIX "" # Убираем авто-префикс "lib", чтобы файл назывался именно blood_filter.dll
+)
