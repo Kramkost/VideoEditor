@@ -16,15 +16,22 @@ struct TimelineTrack {
     TrackType type;
 };
 
-// TODO: [МАГИЯ АНИМАЦИИ] Структура Ключевого Кадра
-struct Keyframe {
-    float time;  // Локальное время внутри клипа (от 0.0 до 1.0)
-    float value; // Значение в этой точке
+// ТИПЫ КРИВЫХ АНИМАЦИИ (BEZIER)
+enum EasingType {
+    EASE_LINEAR,     // Линейно (Ровно)
+    EASE_SMOOTH,     // Плавно (Ускорение + Замедление)
+    EASE_IN,         // Резко в начале, замедляется к концу
+    EASE_OUT         // Медленно в начале, разгоняется к концу
 };
 
-// Система автоматической интерполяции (Кривые Безье)
+struct Keyframe {
+    float time;  
+    float value; 
+};
+
 struct AnimTrack {
     bool isAnimated = false;
+    EasingType easing = EASE_SMOOTH; // По умолчанию красивая плавная кривая
     std::vector<Keyframe> keys;
 
     void AddOrUpdateKey(float time, float val) {
@@ -32,7 +39,6 @@ struct AnimTrack {
             if (std::abs(k.time - time) < 0.01f) { k.value = val; return; }
         }
         keys.push_back({time, val});
-        // Сортируем ключи по времени слева направо
         std::sort(keys.begin(), keys.end(), [](const Keyframe& a, const Keyframe& b){ return a.time < b.time; });
     }
 
@@ -42,14 +48,18 @@ struct AnimTrack {
         if (time <= keys.front().time) return keys.front().value;
         if (time >= keys.back().time) return keys.back().value;
 
-        // Ищем два ключа, между которыми сейчас находится ползунок
         for (size_t i = 0; i < keys.size() - 1; ++i) {
             if (time >= keys[i].time && time <= keys[i+1].time) {
                 float t = (time - keys[i].time) / (keys[i+1].time - keys[i].time);
                 
-                // TODO: [КУБИЧЕСКАЯ КРИВАЯ БЕЗЬЕ - EASE IN / EASE OUT]
-                // Формула Smoothstep дает идеально плавное ускорение и замедление!
-                float smoothT = t * t * (3.0f - 2.0f * t);
+                // TODO: [НОВЫЕ КРИВЫЕ БЕЗЬЕ И СГЛАЖИВАНИЯ]
+                float smoothT = t;
+                switch (easing) {
+                    case EASE_LINEAR: smoothT = t; break;
+                    case EASE_SMOOTH: smoothT = t * t * (3.0f - 2.0f * t); break;
+                    case EASE_IN:     smoothT = t * t * t; break;
+                    case EASE_OUT:    smoothT = 1.0f - std::pow(1.0f - t, 3.0f); break;
+                }
                 
                 return keys[i].value + (keys[i+1].value - keys[i].value) * smoothT;
             }
@@ -67,19 +77,13 @@ struct VideoClip {
     float volume;    
     int trackIndex; 
     
-    float posX;     
-    float posY;     
-    float scale;    
-    float rotation; 
-
-    // Треки анимаций для каждого параметра (как в Premiere)
+    float posX; float posY; float scale; float rotation; 
     AnimTrack animX, animY, animScale, animRot;
 
     bool isText;
     std::string textContent;
     std::vector<EffectParams> effects;
 
-    // УМНЫЙ КОНСТРУКТОР: Защита от ошибок при создании новых клипов
     VideoClip(std::string path, float tStart, float tEnd, int track, bool text = false, std::string tContent = "") 
         : filepath(path), timelineStart(tStart), timelineEnd(tEnd), mediaStart(0.0f), mediaEnd(1.0f), 
           volume(1.0f), trackIndex(track), posX(0.0f), posY(0.0f), scale(1.0f), rotation(0.0f), 
@@ -91,11 +95,13 @@ public:
     void Init(SDL_Window* window, SDL_Renderer* renderer);
     void ProcessEvent(const SDL_Event* event);
     
+    // ДОБАВИЛИ projectFiles В АРГУМЕНТЫ!
     std::string Render(int windowW, int windowH, int uiHeight, 
                        float& progress, bool& isPlaying, bool& doSeek,
                        std::vector<VideoClip>& clips, int& selectedClipIndex, 
                        bool& showExport, const std::vector<TimelineTrack>& tracks,
-                       bool& doAddText, bool& effectChanged);
+                       bool& doAddText, bool& effectChanged, 
+                       std::vector<std::string>& projectFiles);
                        
     void DrawSurface(SDL_Renderer* renderer);
     void Shutdown();

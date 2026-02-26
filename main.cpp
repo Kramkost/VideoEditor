@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cmath> 
+#include <algorithm>
 #include "export_ui.h"
 #include "imgui.h"
 
@@ -40,6 +41,7 @@ int main(int argc, char* argv[]) {
     std::vector<int> lastActiveClipPerTrack(projectTracks.size(), -1);
 
     std::vector<VideoClip> projectClips;
+    std::vector<std::string> projectFiles; // НОВОЕ: Наш Project Bin (Медиапул)
     int selectedClipIndex = -1;
 
     bool isPlaying = false;
@@ -66,14 +68,10 @@ int main(int argc, char* argv[]) {
                 std::string droppedFile = event.drop.file;
                 SDL_free(event.drop.file); 
                 
-                float start = currentProgress;
-                float end = start + 0.15f; 
-                if (end > 1.0f) end = 1.0f;
-                if (projectClips.empty()) { start = 0.0f; end = 1.0f; }
-
-                // ИСПОЛЬЗУЕМ КРАСИВЫЙ КОНСТРУКТОР
-                projectClips.push_back(VideoClip(droppedFile, start, end, 0));
-                selectedClipIndex = projectClips.size() - 1;
+                // ПРОФЕССИОНАЛЬНО: Файл летит не на таймлайн, а в Project Bin!
+                if (std::find(projectFiles.begin(), projectFiles.end(), droppedFile) == projectFiles.end()) {
+                    projectFiles.push_back(droppedFile);
+                }
             }
             
             if (event.type == SDL_KEYDOWN) {
@@ -91,7 +89,6 @@ int main(int argc, char* argv[]) {
         Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
         bool inPreviewArea = (mouseX > leftPanelW) && (mouseX < WINDOW_VIEW_W - rightPanelW) && (mouseY < WINDOW_VIEW_H);
         
-        // TODO: [ИНТЕРАКТИВНОЕ ДОБАВЛЕНИЕ КЛЮЧЕЙ МЫШКОЙ]
         if (inPreviewArea && (mouseState & SDL_BUTTON(SDL_BUTTON_LEFT)) && !ImGui::GetIO().WantCaptureMouse) {
             if (selectedClipIndex != -1 && selectedClipIndex < projectClips.size()) {
                 float dx = mouseX - lastMouseX;
@@ -101,7 +98,6 @@ int main(int argc, char* argv[]) {
                 float len = clip.timelineEnd - clip.timelineStart;
                 float locProg = (len > 0.001f) ? (currentProgress - clip.timelineStart) / len : 0.0f;
                 
-                // Если включена анимация, движение мышки создает ключ (Keyframe)
                 if (clip.animX.isAnimated) {
                     float curValX = clip.animX.GetValue(locProg, clip.posX);
                     clip.animX.AddOrUpdateKey(locProg, curValX + dx);
@@ -128,12 +124,15 @@ int main(int argc, char* argv[]) {
         bool doSeek = false;
         bool doAddText = false; 
         bool effectChanged = false; 
-        std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, currentProgress, isPlaying, doSeek, projectClips, selectedClipIndex, showExportMenu, projectTracks, doAddText, effectChanged);
+        
+        // Передаем projectFiles в UI
+        std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, currentProgress, isPlaying, doSeek, projectClips, selectedClipIndex, showExportMenu, projectTracks, doAddText, effectChanged, projectFiles);
                                            
         if (!newFile.empty()) {
-            projectClips.push_back(VideoClip(newFile, 0.0f, 1.0f, 0));
-            selectedClipIndex = projectClips.size() - 1;
-            currentProgress = 0.0f; 
+            // Добавляем импортированный файл в Project Bin
+            if (std::find(projectFiles.begin(), projectFiles.end(), newFile) == projectFiles.end()) {
+                projectFiles.push_back(newFile);
+            }
         }
 
         if (doAddText) {
@@ -189,8 +188,6 @@ int main(int argc, char* argv[]) {
                     
                     bool isVideoTrack = (projectTracks[t].type == TRACK_VIDEO);
 
-                    // TODO: [СИЛА КРИВЫХ БЕЗЬЕ В ДЕЙСТВИИ]
-                    // Отдаем плееру интерполированные значения!
                     float currentPosX = activeClip.animX.GetValue(localProg, activeClip.posX);
                     float currentPosY = activeClip.animY.GetValue(localProg, activeClip.posY);
                     float currentScale = activeClip.animScale.GetValue(localProg, activeClip.scale);
