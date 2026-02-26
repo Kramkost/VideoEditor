@@ -18,10 +18,10 @@ struct TimelineTrack {
 
 // ТИПЫ КРИВЫХ АНИМАЦИИ (BEZIER)
 enum EasingType {
-    EASE_LINEAR,     // Линейно (Ровно)
-    EASE_SMOOTH,     // Плавно (Ускорение + Замедление)
-    EASE_IN,         // Резко в начале, замедляется к концу
-    EASE_OUT         // Медленно в начале, разгоняется к концу
+    EASE_LINEAR,     
+    EASE_SMOOTH,     
+    EASE_IN,         
+    EASE_OUT         
 };
 
 struct Keyframe {
@@ -31,7 +31,7 @@ struct Keyframe {
 
 struct AnimTrack {
     bool isAnimated = false;
-    EasingType easing = EASE_SMOOTH; // По умолчанию красивая плавная кривая
+    EasingType easing = EASE_SMOOTH; 
     std::vector<Keyframe> keys;
 
     void AddOrUpdateKey(float time, float val) {
@@ -52,7 +52,6 @@ struct AnimTrack {
             if (time >= keys[i].time && time <= keys[i+1].time) {
                 float t = (time - keys[i].time) / (keys[i+1].time - keys[i].time);
                 
-                // TODO: [НОВЫЕ КРИВЫЕ БЕЗЬЕ И СГЛАЖИВАНИЯ]
                 float smoothT = t;
                 switch (easing) {
                     case EASE_LINEAR: smoothT = t; break;
@@ -84,10 +83,14 @@ struct VideoClip {
     std::string textContent;
     std::vector<EffectParams> effects;
 
+    // TODO: [НОВЫЕ ПЕРЕМЕННЫЕ] Для плавной анимации интерфейса (Hover/Click)
+    float visualScale; 
+    bool isInteracting;
+
     VideoClip(std::string path, float tStart, float tEnd, int track, bool text = false, std::string tContent = "") 
         : filepath(path), timelineStart(tStart), timelineEnd(tEnd), mediaStart(0.0f), mediaEnd(1.0f), 
           volume(1.0f), trackIndex(track), posX(0.0f), posY(0.0f), scale(1.0f), rotation(0.0f), 
-          isText(text), textContent(tContent) {}
+          isText(text), textContent(tContent), visualScale(1.0f), isInteracting(false) {}
 };
 
 class UIManager {
@@ -95,7 +98,6 @@ public:
     void Init(SDL_Window* window, SDL_Renderer* renderer);
     void ProcessEvent(const SDL_Event* event);
     
-    // ДОБАВИЛИ projectFiles В АРГУМЕНТЫ!
     std::string Render(int windowW, int windowH, int uiHeight, 
                        float& progress, bool& isPlaying, bool& doSeek,
                        std::vector<VideoClip>& clips, int& selectedClipIndex, 
@@ -108,4 +110,7 @@ public:
     
 private:
     std::string OpenFileDialog();
+    
+    // TODO: Флаг для открытия окна настроек
+    bool showSettings = false; 
 };

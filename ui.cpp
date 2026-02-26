@@ -43,6 +43,41 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
+    // TODO: [ПОЛИШИНГ] Верхняя панель (Main Menu Bar)
+    float menuHeight = 0.0f;
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Settings")) showSettings = true;
+            if (ImGui::MenuItem("Export")) showExport = true;
+            ImGui::EndMenu();
+        }
+        menuHeight = ImGui::GetWindowSize().y;
+        ImGui::EndMainMenuBar();
+    }
+
+    // TODO: [ПОЛИШИНГ] Модальное окно настроек (Settings)
+    if (showSettings) {
+        ImGui::SetNextWindowPos(ImVec2(windowW / 2 - 200, windowH / 2 - 150), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(400, 250), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Preferences", &showSettings, ImGuiWindowFlags_NoCollapse)) {
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Editor Settings");
+            ImGui::Separator(); ImGui::Spacing();
+            
+            static bool disableAnim = false;
+            ImGui::Checkbox("Disable UI Animations (WIP / Не сделано)", &disableAnim);
+            
+            static float globalPlaybackSpeed = 1.0f;
+            ImGui::SliderFloat("Playback Speed (WIP / Не сделано)", &globalPlaybackSpeed, 0.25f, 4.0f, "%.2fx");
+            
+            static bool proxyMode = false;
+            ImGui::Checkbox("Enable Proxy Mode (1/4 Res) (WIP / Не сделано)", &proxyMode);
+
+            ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+            if (ImGui::Button("Close & Save", ImVec2(120, 30))) showSettings = false;
+        }
+        ImGui::End();
+    }
+
     int leftPanelWidth = 220;
     int rightPanelWidth = 300;
 
@@ -68,8 +103,8 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     }
 
     // === ЛЕВАЯ ВЕРХНЯЯ ПАНЕЛЬ (БИБЛИОТЕКА ЭФФЕКТОВ) ===
-    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(leftPanelWidth, windowH / 2), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(0, menuHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(leftPanelWidth, windowH / 2 - menuHeight), ImGuiCond_Always);
     ImGui::Begin("Effects Library", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
     ImGui::TextColored(ImVec4(0.8f, 0.4f, 1.0f, 1.0f), "Video Plugins:");
     ImGui::Separator(); ImGui::Spacing();
@@ -83,7 +118,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     }
     ImGui::End();
 
-    // === ЛЕВАЯ НИЖНЯЯ ПАНЕЛЬ (PROJECT BIN / MEDIA POOL) ===
+    // === ЛЕВАЯ НИЖНЯЯ ПАНЕЛЬ (PROJECT BIN) ===
     ImGui::SetNextWindowPos(ImVec2(0, windowH / 2), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(leftPanelWidth, windowH - uiHeight - windowH / 2), ImGuiCond_Always);
     ImGui::Begin("Project Bin", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
@@ -93,7 +128,6 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         std::string shortName = projectFiles[i].substr(projectFiles[i].find_last_of("/\\") + 1);
         ImGui::Selectable(shortName.c_str());
         
-        // DRAG AND DROP SOURCE (Хватаем файл отсюда)
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
             ImGui::SetDragDropPayload("PROJECT_FILE", &i, sizeof(int));
             ImGui::Text("Dragging: %s", shortName.c_str());
@@ -102,9 +136,9 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     }
     ImGui::End();
 
-    // === ПРАВАЯ ПАНЕЛЬ (ИНСПЕКТОР С ГРАФИКАМИ КРИВЫХ) ===
-    ImGui::SetNextWindowPos(ImVec2(windowW - rightPanelWidth, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(rightPanelWidth, windowH - uiHeight), ImGuiCond_Always);
+    // === ПРАВАЯ ПАНЕЛЬ (ИНСПЕКТОР) ===
+    ImGui::SetNextWindowPos(ImVec2(windowW - rightPanelWidth, menuHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(rightPanelWidth, windowH - uiHeight - menuHeight), ImGuiCond_Always);
     ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
     
     ImGui::Text("Properties"); ImGui::Separator();
@@ -149,7 +183,6 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         ImGui::TextDisabled("Hold [SHIFT] while dragging to fine-tune!");
         ImGui::Spacing();
 
-        // [ОКНО ГРАФИКА БЕЗЬЕ]
         ImGui::TextColored(ImVec4(0.9f, 0.5f, 0.2f, 1.0f), "Curves Editor");
         const char* easeNames[] = {"Linear (Резко)", "Smooth (Ease In/Out)", "Ease In (Ускорение)", "Ease Out (Торможение)"};
         int eType = clips[selectedClipIndex].animX.easing;
@@ -247,18 +280,35 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         float x1 = p.x + (clips[i].timelineStart * trackWidth);
         float x2 = p.x + (clips[i].timelineEnd * trackWidth);
         
+        // TODO: [МАГИЯ АНИМАЦИИ] Плавное увеличение клипа при взятии мышкой!
+        float targetScale = clips[i].isInteracting ? 1.1f : 1.0f;
+        // Плавная интерполяция к целевому размеру
+        clips[i].visualScale += (targetScale - clips[i].visualScale) * 0.3f; 
+
+        float clipW = x2 - x1;
+        float centerX = x1 + clipW * 0.5f;
+        float centerY = currentY + trackHeight * 0.5f;
+
+        // Вычисляем новые координаты с учетом "дыхания"
+        float dX1 = centerX - (clipW * 0.5f) * clips[i].visualScale;
+        float dX2 = centerX + (clipW * 0.5f) * clips[i].visualScale;
+        float dY1 = centerY - (trackHeight * 0.5f) * clips[i].visualScale;
+        float dY2 = centerY + (trackHeight * 0.5f) * clips[i].visualScale;
+
         ImU32 clipColor = (i == selectedClipIndex) ? IM_COL32(100, 150, 220, 255) : IM_COL32(50, 100, 160, 255);
         if (tracks[t].type == TRACK_AUDIO && i != selectedClipIndex) clipColor = IM_COL32(50, 160, 100, 255); 
         if (clips[i].isText && i != selectedClipIndex) clipColor = IM_COL32(160, 100, 50, 255); 
         
-        draw_list->AddRectFilled(ImVec2(x1 + 1, currentY + 2), ImVec2(x2 - 1, currentY + trackHeight - 2), clipColor, 4.0f);
+        // Рисуем увеличенный прямоугольник
+        draw_list->AddRectFilled(ImVec2(dX1 + 1, dY1 + 2), ImVec2(dX2 - 1, dY2 - 2), clipColor, 4.0f);
         
         auto DrawDiamonds = [&](const AnimTrack& track, ImU32 color) {
             if (!track.isAnimated) return;
             for (const auto& k : track.keys) {
                 float kx = p.x + (clips[i].timelineStart + k.time * (clips[i].timelineEnd - clips[i].timelineStart)) * trackWidth;
-                float ky = currentY + trackHeight - 8.0f;
-                ImVec2 p1(kx, ky - 4), p2(kx + 4, ky), p3(kx, ky + 4), p4(kx - 4, ky);
+                float ky = dY2 - 8.0f * clips[i].visualScale; // Смещаем ромбик вниз вместе с рамкой
+                float s = 4.0f * clips[i].visualScale;
+                ImVec2 p1(kx, ky - s), p2(kx + s, ky), p3(kx, ky + s), p4(kx - s, ky);
                 ImVec2 quad[4] = {p1, p2, p3, p4};
                 draw_list->AddConvexPolyFilled(quad, 4, color);
             }
@@ -272,12 +322,16 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             std::string shortN = clips[i].filepath.substr(clips[i].filepath.find_last_of("/\\") + 1);
             sprintf(label, "%s", shortN.c_str());
         }
-        draw_list->AddText(ImVec2(x1 + 5, currentY + 5), IM_COL32(255, 255, 255, 255), label);
+        draw_list->AddText(ImVec2(dX1 + 5, dY1 + 5), IM_COL32(255, 255, 255, 255), label);
         
+        // Сбрасываем флаг (он включится ниже, если мы реально держим клип мышкой)
+        clips[i].isInteracting = false;
+
         ImGui::SetCursorScreenPos(ImVec2(x1 - 4, currentY));
         ImGui::InvisibleButton((std::string("left_") + std::to_string(i)).c_str(), ImVec2(8, trackHeight));
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
+            clips[i].isInteracting = true;
             float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
             if (clips[i].mediaStart + delta < 0.0f) delta = -clips[i].mediaStart;
             if (clips[i].timelineStart + delta >= clips[i].timelineEnd - 0.01f) delta = clips[i].timelineEnd - clips[i].timelineStart - 0.01f;
@@ -289,6 +343,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         ImGui::InvisibleButton((std::string("right_") + std::to_string(i)).c_str(), ImVec2(8, trackHeight));
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
+            clips[i].isInteracting = true;
             float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
             if (clips[i].mediaEnd + delta > 1.0f) delta = 1.0f - clips[i].mediaEnd;
             if (clips[i].timelineEnd + delta <= clips[i].timelineStart + 0.01f) delta = clips[i].timelineStart + 0.01f - clips[i].timelineEnd;
@@ -302,6 +357,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         if (ImGui::IsItemClicked()) selectedClipIndex = i;
         
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
+            clips[i].isInteracting = true; // Заставляем его "надуться" до 1.1x при перетаскивании!
             float deltaX = ImGui::GetIO().MouseDelta.x / trackWidth;
             if (clips[i].timelineStart + deltaX < 0.0f) deltaX = -clips[i].timelineStart;
             if (clips[i].timelineEnd + deltaX > 1.0f) deltaX = 1.0f - clips[i].timelineEnd;
@@ -331,7 +387,6 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         doSeek = true;
     }
 
-    // TODO: [МАГИЯ DRAG & DROP] Ловим файлы из Project Bin и кидаем на нужную дорожку
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PROJECT_FILE")) {
             int fileIndex = *(const int*)payload->Data;
@@ -353,7 +408,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         ImGui::EndDragDropTarget();
     }
 
-    ImGui::End(); // Закрываем окно Timeline
+    ImGui::End(); 
     return selectedFile;
 }
 
