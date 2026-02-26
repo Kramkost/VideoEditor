@@ -15,9 +15,8 @@ include_directories("imgui") # NEW: Путь к заголовочным фай�
 file(GLOB IMGUI_SOURCES "imgui/*.cpp") 
 
 # --- 2. СОЗДАЕМ EXE ---
-# --- 2. СОЗДАЕМ EXE ---
 # Строка создания exe:
-add_executable(Editor main.cpp ui.cpp video_player.cpp export_ui.cpp ${IMGUI_SOURCES})
+add_executable(Editor main.cpp ui.cpp video_player.cpp export_ui.cpp project_manager.cpp ${IMGUI_SOURCES})
 
 # Строка WIN_LIBS (добавили comdlg32 в конец):
 set(WIN_LIBS setupapi imm32 version winmm gdi32 comdlg32)
