@@ -183,14 +183,18 @@ bool ProjectManager::SaveProjectAs(ProjectData& project) {
 bool ProjectManager::SaveProject(const ProjectData& project) {
     if (project.saveFilepath.empty()) return false;
 
-    std::ofstream file(project.saveFilepath);
-    if (!file.is_open()) return false;
+    // ИСПОЛЬЗУЕМ std::filesystem::path ДЛЯ ЗАЩИТЫ ОТ БАГА С РУССКИМИ БУКВАМИ
+    std::ofstream file(std::filesystem::path(project.saveFilepath));
+    if (!file.is_open()) {
+        std::cerr << "ОШИБКА: Не удалось открыть файл для сохранения! (Возможно, проблема с кодировкой пути): " << project.saveFilepath << "\n";
+        return false;
+    }
 
-    // Save media files
+    // Сохраняем медиа файлы
     file << "[MEDIA]\n";
     for (const auto& m : project.mediaFiles) file << m << "\n";
 
-    // Save clips on timeline
+    // Сохраняем клипы (Здесь можно расширить для анимаций и эффектов)
     file << "[CLIPS]\n";
     for (const auto& c : project.clips) {
         file << c.filepath << "|" << c.timelineStart << "|" << c.timelineEnd << "|" << c.trackIndex << "|" << c.isText << "|" << c.textContent << "\n";
@@ -198,7 +202,7 @@ bool ProjectManager::SaveProject(const ProjectData& project) {
 
     file.close();
 
-    // Add to recent projects
+    // Добавляем в недавние
     if (std::find(recentProjects.begin(), recentProjects.end(), project.saveFilepath) == recentProjects.end()) {
         recentProjects.insert(recentProjects.begin(), project.saveFilepath);
         SaveRecentList();

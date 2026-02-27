@@ -83,7 +83,7 @@ struct VideoClip {
     std::string textContent;
     std::vector<EffectParams> effects;
 
-    // TODO: [НОВЫЕ ПЕРЕМЕННЫЕ] Для плавной анимации интерфейса (Hover/Click)
+    // Для плавной анимации интерфейса (Hover/Click)
     float visualScale; 
     bool isInteracting;
 
@@ -101,16 +101,19 @@ public:
     std::string Render(int windowW, int windowH, int uiHeight, 
                        float& progress, bool& isPlaying, bool& doSeek,
                        std::vector<VideoClip>& clips, int& selectedClipIndex, 
-                       bool& showExport, const std::vector<TimelineTrack>& tracks,
+                       bool& showExport, std::vector<TimelineTrack>& tracks,
                        bool& doAddText, bool& effectChanged, 
                        std::vector<std::string>& projectFiles);
                        
     void DrawSurface(SDL_Renderer* renderer);
     void Shutdown();
     
+    // --- НОВЫЕ ФЛАГИ ДЛЯ СОХРАНЕНИЯ ---
+    bool triggerSave = false;
+    bool triggerSaveAs = false;
+    
 private:
     std::string OpenFileDialog();
     
-    // TODO: Флаг для открытия окна настроек
     bool showSettings = false; 
 };

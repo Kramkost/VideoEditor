@@ -1,15 +1,10 @@
 ﻿/* =========================================================================
  * TITAN VIDEO EDITOR - MAIN APPLICATION LOOP
  * =========================================================================
- * This file contains the main entry point and core loop of the application.
- * It handles SDL initialization, input events, and manages the application
- * state switching between the "Start Screen" and the "Main Editor".
- *
  * RECENT UPDATES:
- * - Integrated 'ProjectManager' for creating, loading, and saving projects.
- * - Replaced scattered vectors with a unified 'ProjectData' structure.
- * - Added a dedicated Start Screen that appears before the editor loads.
- * - Project Media Bin (Media files) is now saved into the project state.
+ * - Real FFmpeg CLI Export Pipeline (Captures C++ Render Target)
+ * - Dynamic Track Management (+ Add Track sync)
+ * - Start Screen / Project Management integration
  * ========================================================================= */
 
 #include <iostream>
@@ -21,9 +16,9 @@
 // --- CORE SYSTEM INCLUDES ---
 #include "export_ui.h"
 #include "imgui.h"
-#include "imgui_impl_sdl2.h"         // Added for Start Screen ImGui handling
-#include "imgui_impl_sdlrenderer2.h" // Added for Start Screen ImGui handling
-#include "project_manager.h"         // NEW: Project System integration
+#include "imgui_impl_sdl2.h"         
+#include "imgui_impl_sdlrenderer2.h" 
+#include "project_manager.h"         
 
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
@@ -50,11 +45,11 @@ int main(int argc, char* argv[]) {
     bool showExportMenu = false;
 
     PluginManager::InitAndScanPlugins();
-    ProjectManager::Init(); // NEW: Initialize project system (loads recent list)
+    ProjectManager::Init(); 
 
     // 3. APPLICATION STATE VARIABLES
-    ProjectData currentProject;  // NEW: Holds all tracks, clips, and media files
-    bool isProjectOpen = false;  // NEW: Toggle between Start Screen and Editor
+    ProjectData currentProject;  
+    bool isProjectOpen = false;  
     
     std::vector<VideoPlayer*> players;
     std::vector<int> lastActiveClipPerTrack;
@@ -71,6 +66,13 @@ int main(int argc, char* argv[]) {
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
     int lastMouseX = 0, lastMouseY = 0;
 
+    // 4. EXPORT VARIABLES (НОВЫЕ ПЕРЕМЕННЫЕ)
+    bool isExporting = false;
+    int exportFrameCurrent = 0;
+    int exportFrameTotal = 0;
+    FILE* ffmpegPipe = nullptr;
+    std::vector<uint8_t> exportPixelBuffer;
+
     // =========================================================================
     // MAIN APPLICATION LOOP
     // =========================================================================
@@ -85,7 +87,6 @@ int main(int argc, char* argv[]) {
             ui.ProcessEvent(&event); // Always send events to UI first
             if (event.type == SDL_QUIT) isRunning = false;
             
-            // Handle Drag & Drop ONLY if a project is open
             if (event.type == SDL_DROPFILE) {
                 std::string droppedFile = event.drop.file;
                 SDL_free(event.drop.file); 
@@ -97,13 +98,11 @@ int main(int argc, char* argv[]) {
                 }
             }
             
-            // Handle Keyboard inputs ONLY if a project is open
-            if (event.type == SDL_KEYDOWN && isProjectOpen) {
+            if (event.type == SDL_KEYDOWN && isProjectOpen && !isExporting) {
                 if (event.key.keysym.sym == SDLK_SPACE) isPlaying = !isPlaying; 
                 if (event.key.keysym.sym == SDLK_RIGHT) { currentProgress += 0.05f; if (currentProgress > 1.0f) currentProgress = 1.0f; }
                 if (event.key.keysym.sym == SDLK_LEFT)  { currentProgress -= 0.05f; if (currentProgress < 0.0f) currentProgress = 0.0f; }
                 
-                // NEW: Quick Save shortcut (Ctrl+S)
                 if (event.key.keysym.sym == SDLK_s && (SDL_GetModState() & KMOD_CTRL)) {
                     if (currentProject.saveFilepath.empty()) ProjectManager::SaveProjectAs(currentProject);
                     else ProjectManager::SaveProject(currentProject);
@@ -118,23 +117,20 @@ int main(int argc, char* argv[]) {
             SDL_SetRenderDrawColor(renderer, 25, 25, 30, 255); // Dark background
             SDL_RenderClear(renderer);
 
-            // Manual ImGui frame setup for Start Screen
             ImGui_ImplSDLRenderer2_NewFrame();
             ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
 
-            // Render Start Screen. Returns true if user created or loaded a project.
             if (ProjectManager::DrawStartScreen(WINDOW_VIEW_W, WINDOW_VIEW_H + EXTRA_UI_HEIGHT, currentProject)) {
                 isProjectOpen = true; 
                 
-                // Initialize VideoPlayers based on the loaded project tracks
-                for (auto p : players) delete p; // Clear old players if any
-                players.clear();
+                for (auto p : players) delete p; 
+                players.clear(); lastActiveClipPerTrack.clear();
                 
                 for (int i = 0; i < currentProject.tracks.size(); i++) {
                     players.push_back(new VideoPlayer());
+                    lastActiveClipPerTrack.push_back(-1);
                 }
-                lastActiveClipPerTrack.assign(currentProject.tracks.size(), -1);
             }
 
             ImGui::Render();
@@ -146,68 +142,121 @@ int main(int argc, char* argv[]) {
         // STATE 2: MAIN EDITOR (Project is loaded)
         // =========================================================================
         else {
+            // --- СИНХРОНИЗАЦИЯ НОВЫХ ДОРОЖЕК ИЗ UI ---
+            while (players.size() < currentProject.tracks.size()) {
+                players.push_back(new VideoPlayer());
+                lastActiveClipPerTrack.push_back(-1);
+            }
+
             int leftPanelW = 220;
             int rightPanelW = 300;
             int viewW = WINDOW_VIEW_W - leftPanelW - rightPanelW;
             
-            // --- MOUSE PREVIEW INTERACTION ---
-            int mouseX, mouseY;
-            Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
-            bool inPreviewArea = (mouseX > leftPanelW) && (mouseX < WINDOW_VIEW_W - rightPanelW) && (mouseY < WINDOW_VIEW_H);
-            
-            if (inPreviewArea && (mouseState & SDL_BUTTON(SDL_BUTTON_LEFT)) && !ImGui::GetIO().WantCaptureMouse) {
-                if (selectedClipIndex != -1 && selectedClipIndex < currentProject.clips.size()) {
-                    float dx = mouseX - lastMouseX;
-                    float dy = mouseY - lastMouseY;
-                    
-                    auto& clip = currentProject.clips[selectedClipIndex];
-                    float len = clip.timelineEnd - clip.timelineStart;
-                    float locProg = (len > 0.001f) ? (currentProgress - clip.timelineStart) / len : 0.0f;
-                    
-                    if (clip.animX.isAnimated) {
-                        float curValX = clip.animX.GetValue(locProg, clip.posX);
-                        clip.animX.AddOrUpdateKey(locProg, curValX + dx);
-                    } else clip.posX += dx;
-
-                    if (clip.animY.isAnimated) {
-                        float curValY = clip.animY.GetValue(locProg, clip.posY);
-                        clip.animY.AddOrUpdateKey(locProg, curValY + dy);
-                    } else clip.posY += dy;
-                }
-            }
-            lastMouseX = mouseX; lastMouseY = mouseY;
-
-            // --- TIMELINE PLAYBACK PROGRESS ---
+            // --- УПРАВЛЕНИЕ ЭКСПОРТОМ (MAGIC HAPPENS HERE) ---
             double maxDurationSec = 1.0;
             for (auto p : players) {
                 if (p->isLoaded && p->GetDurationSeconds() > maxDurationSec) maxDurationSec = p->GetDurationSeconds();
             }
-
-            if (isPlaying) {
-                currentProgress += (float)(dt / maxDurationSec); 
-                if (currentProgress >= 1.0f) { currentProgress = 1.0f; isPlaying = false; }
+            
+            if (exportMenu.startRender) {
+                exportMenu.startRender = false;
+                isExporting = true;
+                isPlaying = false;
+                exportFrameCurrent = 0;
+                
+                float maxTimelineEnd = 0.0f;
+                for (const auto& clip : currentProject.clips) {
+                    if (clip.timelineEnd > maxTimelineEnd) maxTimelineEnd = clip.timelineEnd;
+                }
+                exportFrameTotal = (int)(maxTimelineEnd * maxDurationSec * exportMenu.fps);
+                if (exportFrameTotal == 0) isExporting = false; 
+                
+                if (isExporting) {
+                    exportPixelBuffer.resize(viewW * WINDOW_VIEW_H * 4); 
+                    
+                    std::string cmd = "ffmpeg -y -f rawvideo -pix_fmt argb -s " + std::to_string(viewW) + "x" + std::to_string(WINDOW_VIEW_H) + 
+                                      " -r " + std::to_string(exportMenu.fps) + " -i - -vf scale=" + std::to_string(exportMenu.width) + ":" + std::to_string(exportMenu.height) + 
+                                      " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p \"" + exportMenu.outputPath + "\"";
+                    
+                    #ifdef _WIN32
+                    ffmpegPipe = _popen(cmd.c_str(), "wb");
+                    #else
+                    ffmpegPipe = popen(cmd.c_str(), "w");
+                    #endif
+                    
+                    if (!ffmpegPipe) {
+                        std::cerr << "FAILED TO START FFMPEG EXPORT!\n";
+                        isExporting = false;
+                    }
+                }
             }
 
+            // --- ОБЫЧНАЯ ЛОГИКА (Если не экспортируем) ---
             bool doSeek = false;
             bool doAddText = false; 
             bool effectChanged = false; 
             
+            if (!isExporting) {
+                int mouseX, mouseY;
+                Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
+                bool inPreviewArea = (mouseX > leftPanelW) && (mouseX < WINDOW_VIEW_W - rightPanelW) && (mouseY < WINDOW_VIEW_H);
+                
+                if (inPreviewArea && (mouseState & SDL_BUTTON(SDL_BUTTON_LEFT)) && !ImGui::GetIO().WantCaptureMouse) {
+                    if (selectedClipIndex != -1 && selectedClipIndex < currentProject.clips.size()) {
+                        float dx = mouseX - lastMouseX;
+                        float dy = mouseY - lastMouseY;
+                        
+                        auto& clip = currentProject.clips[selectedClipIndex];
+                        float len = clip.timelineEnd - clip.timelineStart;
+                        float locProg = (len > 0.001f) ? (currentProgress - clip.timelineStart) / len : 0.0f;
+                        
+                        if (clip.animX.isAnimated) {
+                            float curValX = clip.animX.GetValue(locProg, clip.posX);
+                            clip.animX.AddOrUpdateKey(locProg, curValX + dx);
+                        } else clip.posX += dx;
+
+                        if (clip.animY.isAnimated) {
+                            float curValY = clip.animY.GetValue(locProg, clip.posY);
+                            clip.animY.AddOrUpdateKey(locProg, curValY + dy);
+                        } else clip.posY += dy;
+                    }
+                }
+                lastMouseX = mouseX; lastMouseY = mouseY;
+
+                if (isPlaying) {
+                    currentProgress += (float)(dt / maxDurationSec); 
+                    if (currentProgress >= 1.0f) { currentProgress = 1.0f; isPlaying = false; }
+                }
+            } else {
+                // Если мы ЭКСПОРТИРУЕМ, жестко двигаем ползунок покадрово
+                currentProgress = (float)exportFrameCurrent / exportFrameTotal;
+                doSeek = true; 
+            }
+
             // --- UI RENDERING ---
-            // Pass all project data instead of loose vectors
+            // --- UI RENDERING ---
             std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, 
                                             currentProgress, isPlaying, doSeek, 
                                             currentProject.clips, selectedClipIndex, 
                                             showExportMenu, currentProject.tracks, 
                                             doAddText, effectChanged, currentProject.mediaFiles);
+                                            
+            // --- ОБРАБОТКА КНОПОК СОХРАНЕНИЯ ИЗ UI ---
+            if (ui.triggerSave) {
+                ui.triggerSave = false;
+                if (currentProject.saveFilepath.empty()) ProjectManager::SaveProjectAs(currentProject);
+                else ProjectManager::SaveProject(currentProject);
+            }
+            if (ui.triggerSaveAs) {
+                ui.triggerSaveAs = false;
+                ProjectManager::SaveProjectAs(currentProject);
+            }
                                                
-            // Handle returned file from Import button
             if (!newFile.empty()) {
                 if (std::find(currentProject.mediaFiles.begin(), currentProject.mediaFiles.end(), newFile) == currentProject.mediaFiles.end()) {
-                    currentProject.mediaFiles.push_back(newFile);
                 }
             }
 
-            // Handle add text button
             if (doAddText) {
                 float start = currentProgress;
                 float end = start + 0.15f; 
@@ -223,7 +272,6 @@ int main(int argc, char* argv[]) {
             
             for (int t = 0; t < currentProject.tracks.size(); ++t) {
                 int activeClipIndex = -1;
-                // Find which clip is currently active on this track
                 for (int i = 0; i < currentProject.clips.size(); ++i) {
                     if (currentProject.clips[i].trackIndex == t && currentProgress >= currentProject.clips[i].timelineStart && currentProgress < currentProject.clips[i].timelineEnd) {
                         activeClipIndex = i;
@@ -239,7 +287,6 @@ int main(int argc, char* argv[]) {
                         if (lastActiveClipPerTrack[t] != -1) players[t]->ClearAudio(); 
                     } 
                     else {
-                        // Load video if it changed
                         if (players[t]->loadedFilepath != activeClip.filepath) {
                             players[t]->LoadVideo(activeClip.filepath, renderer);
                         }
@@ -259,7 +306,8 @@ int main(int argc, char* argv[]) {
                             }
                         }
 
-                        players[t]->isPlaying = isPlaying; 
+                        // Отключаем звук во время экспорта
+                        players[t]->isPlaying = isExporting ? false : isPlaying; 
                         players[t]->currentVolume = activeClip.volume;
                         
                         bool isVideoTrack = (currentProject.tracks[t].type == TRACK_VIDEO);
@@ -269,7 +317,6 @@ int main(int argc, char* argv[]) {
                         float currentScale = activeClip.animScale.GetValue(localProg, activeClip.scale);
                         float currentRot = activeClip.animRot.GetValue(localProg, activeClip.rotation);
 
-                        // Draw video frame to screen
                         players[t]->UpdateAndDraw(renderer, leftPanelW, 0, viewW, WINDOW_VIEW_H, targetTimeSec, isVideoTrack, 
                                                   currentPosX, currentPosY, currentScale, currentRot, activeClip.effects); 
                     }
@@ -281,8 +328,40 @@ int main(int argc, char* argv[]) {
                 lastActiveClipPerTrack[t] = activeClipIndex;
             }
 
-            exportMenu.Draw(&showExportMenu);
-            ui.DrawSurface(renderer); // This handles the ImGui rendering for the editor
+            // --- ЗАХВАТ КАДРА ДЛЯ ЭКСПОРТА ---
+            if (isExporting && ffmpegPipe) {
+                // 1. Читаем пиксели только из зоны превью видео
+                SDL_Rect exportRect = { leftPanelW, 0, viewW, WINDOW_VIEW_H };
+                SDL_RenderReadPixels(renderer, &exportRect, SDL_PIXELFORMAT_ARGB8888, exportPixelBuffer.data(), viewW * 4);
+                
+                // 2. Отправляем в FFmpeg
+                fwrite(exportPixelBuffer.data(), 1, exportPixelBuffer.size(), ffmpegPipe);
+                
+                exportFrameCurrent++;
+                
+                // 3. Рисуем UI ПОВЕРХ, чтобы пользователь видел прогресс
+                ui.DrawSurface(renderer);
+                
+                // Прогресс-бар загрузки
+                SDL_SetRenderDrawColor(renderer, 50, 200, 50, 255);
+                SDL_Rect progressRect = { 0, WINDOW_VIEW_H + EXTRA_UI_HEIGHT - 10, (int)((float)exportFrameCurrent / exportFrameTotal * WINDOW_VIEW_W), 10 };
+                SDL_RenderFillRect(renderer, &progressRect);
+                
+                if (exportFrameCurrent >= exportFrameTotal) {
+                    isExporting = false;
+                    #ifdef _WIN32
+                    _pclose(ffmpegPipe);
+                    #else
+                    pclose(ffmpegPipe);
+                    #endif
+                    ffmpegPipe = nullptr;
+                    currentProgress = 0.0f; // Возвращаем в начало
+                }
+            } else {
+                exportMenu.Draw(&showExportMenu);
+                ui.DrawSurface(renderer); 
+            }
+            
             SDL_RenderPresent(renderer);
         }
     } 

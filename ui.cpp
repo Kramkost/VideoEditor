@@ -31,10 +31,11 @@ std::string UIManager::OpenFileDialog() {
     return "";
 }
 
+// ВНИМАНИЕ: Здесь убран const перед std::vector<TimelineTrack>& tracks
 std::string UIManager::Render(int windowW, int windowH, int uiHeight, 
                               float& progress, bool& isPlaying, bool& doSeek,
                               std::vector<VideoClip>& clips, int& selectedClipIndex,
-                              bool& showExport, const std::vector<TimelineTrack>& tracks,
+                              bool& showExport, std::vector<TimelineTrack>& tracks,
                               bool& doAddText, bool& effectChanged,
                               std::vector<std::string>& projectFiles) {
     std::string selectedFile = "";
@@ -43,10 +44,15 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    // TODO: [ПОЛИШИНГ] Верхняя панель (Main Menu Bar)
+// === ВЕРХНЯЯ ПАНЕЛЬ (Main Menu Bar) ===
     float menuHeight = 0.0f;
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+            // --- НОВЫЕ КНОПКИ ---
+            if (ImGui::MenuItem("Save Project", "Ctrl+S")) triggerSave = true;
+            if (ImGui::MenuItem("Save As...")) triggerSaveAs = true;
+            ImGui::Separator();
+            
             if (ImGui::MenuItem("Settings")) showSettings = true;
             if (ImGui::MenuItem("Export")) showExport = true;
             ImGui::EndMenu();
@@ -55,25 +61,32 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         ImGui::EndMainMenuBar();
     }
 
-    // TODO: [ПОЛИШИНГ] Модальное окно настроек (Settings)
+    // === МОДАЛЬНОЕ ОКНО НАСТРОЕК ===
     if (showSettings) {
         ImGui::SetNextWindowPos(ImVec2(windowW / 2 - 200, windowH / 2 - 150), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(400, 250), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Preferences", &showSettings, ImGuiWindowFlags_NoCollapse)) {
-            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Editor Settings");
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "General Settings");
             ImGui::Separator(); ImGui::Spacing();
             
-            static bool disableAnim = false;
-            ImGui::Checkbox("Disable UI Animations (WIP / Не сделано)", &disableAnim);
+            static bool darkTheme = true;
+            if (ImGui::Checkbox("Dark Theme", &darkTheme)) {
+                if (darkTheme) ImGui::StyleColorsDark(); else ImGui::StyleColorsLight();
+            }
             
-            static float globalPlaybackSpeed = 1.0f;
-            ImGui::SliderFloat("Playback Speed (WIP / Не сделано)", &globalPlaybackSpeed, 0.25f, 4.0f, "%.2fx");
+            static float uiScale = 1.0f;
+            ImGui::SliderFloat("UI Scale", &uiScale, 0.8f, 1.5f, "%.1f");
+            
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Performance");
+            ImGui::Separator(); ImGui::Spacing();
             
             static bool proxyMode = false;
-            ImGui::Checkbox("Enable Proxy Mode (1/4 Res) (WIP / Не сделано)", &proxyMode);
+            ImGui::Checkbox("Enable Proxy Mode (1/4 Res)", &proxyMode);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Improves playback performance by lowering resolution.");
 
             ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
-            if (ImGui::Button("Close & Save", ImVec2(120, 30))) showSettings = false;
+            if (ImGui::Button("Close & Save", ImVec2(-1, 30))) showSettings = false;
         }
         ImGui::End();
     }
@@ -234,14 +247,40 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::SetNextWindowSize(ImVec2(windowW, uiHeight), ImGuiCond_Always);
     ImGui::Begin("Timeline", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
     
-    if (ImGui::Button("Import File")) { selectedFile = OpenFileDialog(); }
-    ImGui::SameLine(); ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.6f, 0.2f, 1.0f)); 
-    if (ImGui::Button("+ ADD TEXT")) { doAddText = true; } ImGui::PopStyleColor();
-    ImGui::SameLine();
-    if (isPlaying) { if (ImGui::Button("Pause")) isPlaying = false; } else { if (ImGui::Button("Play")) isPlaying = true; }
+    if (ImGui::Button("Import File", ImVec2(100, 30))) { selectedFile = OpenFileDialog(); }
     
-    ImGui::SameLine(); ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); 
-    if (ImGui::Button("CUT (Split here)")) {
+    // Анимированная кнопка ADD TEXT
+    ImGui::SameLine(); 
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.6f, 0.2f, 1.0f)); 
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.7f, 0.3f, 1.0f)); 
+    if (ImGui::Button("+ ADD TEXT", ImVec2(100, 30))) { doAddText = true; } 
+    ImGui::PopStyleColor(2);
+    
+    // НОВАЯ КНОПКА: ADD TRACK
+    ImGui::SameLine(); 
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.8f, 1.0f)); 
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.6f, 0.9f, 1.0f)); 
+    if (ImGui::Button("+ ADD TRACK", ImVec2(100, 30))) { ImGui::OpenPopup("AddTrackPopup"); } 
+    ImGui::PopStyleColor(2);
+
+    if (ImGui::BeginPopup("AddTrackPopup")) {
+        if (ImGui::MenuItem("Add Video Track")) {
+            tracks.push_back({"Video " + std::to_string(tracks.size() + 1), TRACK_VIDEO});
+        }
+        if (ImGui::MenuItem("Add Audio Track")) {
+            tracks.push_back({"Audio " + std::to_string(tracks.size() + 1), TRACK_AUDIO});
+        }
+        ImGui::EndPopup();
+    }
+
+    // Кнопка Play/Pause
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Button, isPlaying ? ImVec4(0.8f, 0.2f, 0.2f, 1.0f) : ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
+    if (ImGui::Button(isPlaying ? "PAUSE" : "PLAY", ImVec2(80, 30))) isPlaying = !isPlaying;
+    ImGui::PopStyleColor();
+
+    ImGui::SameLine(); 
+    if (ImGui::Button("CUT (Split)", ImVec2(100, 30))) {
         if (clips.size() > 0 && selectedClipIndex >= 0) {
             VideoClip newClip = clips[selectedClipIndex];
             float ratio = (progress - clips[selectedClipIndex].timelineStart) / (clips[selectedClipIndex].timelineEnd - clips[selectedClipIndex].timelineStart);
@@ -251,11 +290,11 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             clips.insert(clips.begin() + selectedClipIndex + 1, newClip);
             selectedClipIndex++; 
         }
-    } ImGui::PopStyleColor();
+    } 
 
     ImGui::SameLine(); if (clips.empty()) ImGui::BeginDisabled(); 
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.9f, 1.0f)); 
-    if (ImGui::Button("EXPORT VIDEO")) showExport = true; 
+    if (ImGui::Button("EXPORT VIDEO", ImVec2(120, 30))) showExport = true; 
     ImGui::PopStyleColor(); if (clips.empty()) ImGui::EndDisabled(); 
 
     ImGui::Spacing(); ImGui::Separator();
@@ -280,16 +319,13 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         float x1 = p.x + (clips[i].timelineStart * trackWidth);
         float x2 = p.x + (clips[i].timelineEnd * trackWidth);
         
-        // TODO: [МАГИЯ АНИМАЦИИ] Плавное увеличение клипа при взятии мышкой!
         float targetScale = clips[i].isInteracting ? 1.1f : 1.0f;
-        // Плавная интерполяция к целевому размеру
         clips[i].visualScale += (targetScale - clips[i].visualScale) * 0.3f; 
 
         float clipW = x2 - x1;
         float centerX = x1 + clipW * 0.5f;
         float centerY = currentY + trackHeight * 0.5f;
 
-        // Вычисляем новые координаты с учетом "дыхания"
         float dX1 = centerX - (clipW * 0.5f) * clips[i].visualScale;
         float dX2 = centerX + (clipW * 0.5f) * clips[i].visualScale;
         float dY1 = centerY - (trackHeight * 0.5f) * clips[i].visualScale;
@@ -299,14 +335,13 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         if (tracks[t].type == TRACK_AUDIO && i != selectedClipIndex) clipColor = IM_COL32(50, 160, 100, 255); 
         if (clips[i].isText && i != selectedClipIndex) clipColor = IM_COL32(160, 100, 50, 255); 
         
-        // Рисуем увеличенный прямоугольник
         draw_list->AddRectFilled(ImVec2(dX1 + 1, dY1 + 2), ImVec2(dX2 - 1, dY2 - 2), clipColor, 4.0f);
         
         auto DrawDiamonds = [&](const AnimTrack& track, ImU32 color) {
             if (!track.isAnimated) return;
             for (const auto& k : track.keys) {
                 float kx = p.x + (clips[i].timelineStart + k.time * (clips[i].timelineEnd - clips[i].timelineStart)) * trackWidth;
-                float ky = dY2 - 8.0f * clips[i].visualScale; // Смещаем ромбик вниз вместе с рамкой
+                float ky = dY2 - 8.0f * clips[i].visualScale; 
                 float s = 4.0f * clips[i].visualScale;
                 ImVec2 p1(kx, ky - s), p2(kx + s, ky), p3(kx, ky + s), p4(kx - s, ky);
                 ImVec2 quad[4] = {p1, p2, p3, p4};
@@ -324,7 +359,6 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         }
         draw_list->AddText(ImVec2(dX1 + 5, dY1 + 5), IM_COL32(255, 255, 255, 255), label);
         
-        // Сбрасываем флаг (он включится ниже, если мы реально держим клип мышкой)
         clips[i].isInteracting = false;
 
         ImGui::SetCursorScreenPos(ImVec2(x1 - 4, currentY));
@@ -357,7 +391,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         if (ImGui::IsItemClicked()) selectedClipIndex = i;
         
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
-            clips[i].isInteracting = true; // Заставляем его "надуться" до 1.1x при перетаскивании!
+            clips[i].isInteracting = true; 
             float deltaX = ImGui::GetIO().MouseDelta.x / trackWidth;
             if (clips[i].timelineStart + deltaX < 0.0f) deltaX = -clips[i].timelineStart;
             if (clips[i].timelineEnd + deltaX > 1.0f) deltaX = 1.0f - clips[i].timelineEnd;
