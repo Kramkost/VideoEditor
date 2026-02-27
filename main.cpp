@@ -174,7 +174,7 @@ int main(int argc, char* argv[]) {
                 if (isExporting) {
                     exportPixelBuffer.resize(viewW * WINDOW_VIEW_H * 4); 
                     
-                    std::string cmd = "ffmpeg -y -f rawvideo -pix_fmt argb -s " + std::to_string(viewW) + "x" + std::to_string(WINDOW_VIEW_H) + 
+                    std::string cmd = "ffmpeg -y -f rawvideo -pix_fmt bgra -s " + std::to_string(viewW) + "x" + std::to_string(WINDOW_VIEW_H) + 
                                       " -r " + std::to_string(exportMenu.fps) + " -i - -vf scale=" + std::to_string(exportMenu.width) + ":" + std::to_string(exportMenu.height) + 
                                       " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p \"" + exportMenu.outputPath + "\"";
                     

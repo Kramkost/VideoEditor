@@ -12,8 +12,12 @@ std::string ExportUI::SaveFileDialog() {
     ofn.lpstrFile = szFile;
     ofn.nMaxFile = sizeof(szFile);
     ofn.lpstrFilter = "Video Files\0*.mp4\0All Files\0*.*\0";
+    
+    // --- ФИКСЫ ---
+    ofn.lpstrDefExt = "mp4"; // Гарантирует расширение .mp4
     ofn.nFilterIndex = 1;
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
+    // OFN_NOCHANGEDIR нужен, чтобы Windows не меняла "текущую папку" приложения, иначе отвалятся плагины!
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR; 
 
     if (GetSaveFileNameA(&ofn) == TRUE) {
         return std::string(ofn.lpstrFile);
