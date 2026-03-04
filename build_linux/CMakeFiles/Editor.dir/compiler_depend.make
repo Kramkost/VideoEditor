@@ -3938,10 +3938,564 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
   /usr/lib/gcc/x86_64-redhat-linux/15/include/xsavesintrin.h \
   /usr/lib/gcc/x86_64-redhat-linux/15/include/xtestintrin.h
 
+Editor: /lib/libcairo-gobject.so.2 \
+  /lib64/ld-linux-x86-64.so.2 \
+  /lib64/libc.so.6 \
+  /lib64/libcairo-gobject.so.2 \
+  /lib64/libgcc_s.so.1 \
+  /lib64/libm.so.6 \
+  /lib64/libmvec.so.1 \
+  /usr/lib64/crt1.o \
+  /usr/lib64/crti.o \
+  /usr/lib64/crtn.o \
+  /usr/lib64/libavcodec.so \
+  /usr/lib64/libavformat.so \
+  /usr/lib64/libavutil.so \
+  /usr/lib64/libc.so \
+  /usr/lib64/libm.so \
+  /usr/lib64/libswresample.so \
+  /usr/lib64/libswscale.so \
+  /usr/lib/gcc/x86_64-redhat-linux/15/crtbegin.o \
+  /usr/lib/gcc/x86_64-redhat-linux/15/crtend.o \
+  /usr/lib/gcc/x86_64-redhat-linux/15/libgcc.a \
+  /usr/lib/gcc/x86_64-redhat-linux/15/libgcc_s.so \
+  /usr/lib/gcc/x86_64-redhat-linux/15/libstdc++.so \
+  /usr/lib/libcairo-gobject.so.2 \
+  /usr/lib64/libOpenCL.so.1 \
+  /usr/lib64/libSDL2-2.0.so.0.3200.64 \
+  /usr/lib64/libSvtAv1Enc.so.3 \
+  /usr/lib64/libX11-xcb.so.1 \
+  /usr/lib64/libX11.so.6 \
+  /usr/lib64/libXau.so.6 \
+  /usr/lib64/libXext.so.6 \
+  /usr/lib64/libXfixes.so.3 \
+  /usr/lib64/libXrender.so.1 \
+  /usr/lib64/libaom.so.3 \
+  /usr/lib64/libaribb24.so.0 \
+  /usr/lib64/libaribcaption.so.1 \
+  /usr/lib64/libblkid.so.1 \
+  /usr/lib64/libbluray.so.2 \
+  /usr/lib64/libbrotlicommon.so.1 \
+  /usr/lib64/libbrotlidec.so.1 \
+  /usr/lib64/libbrotlienc.so.1 \
+  /usr/lib64/libbz2.so.1 \
+  /usr/lib64/libc_nonshared.a \
+  /usr/lib64/libcairo-gobject.so.2 \
+  /usr/lib64/libcairo.so.2 \
+  /usr/lib64/libcap.so.2 \
+  /usr/lib64/libchromaprint.so.1 \
+  /usr/lib64/libcodec2.so.1.2 \
+  /usr/lib64/libcom_err.so.2 \
+  /usr/lib64/libcrypt.so.2 \
+  /usr/lib64/libcrypto.so.3 \
+  /usr/lib64/libdatrie.so.1 \
+  /usr/lib64/libdav1d.so.7 \
+  /usr/lib64/libdcerpc-binding.so.0 \
+  /usr/lib64/libdrm.so.2 \
+  /usr/lib64/libevent-2.1.so.7 \
+  /usr/lib64/libffi.so.8 \
+  /usr/lib64/libfontconfig.so.1 \
+  /usr/lib64/libfreetype.so.6 \
+  /usr/lib64/libfribidi.so.0 \
+  /usr/lib64/libgcrypt.so.20 \
+  /usr/lib64/libgdk_pixbuf-2.0.so.0 \
+  /usr/lib64/libgio-2.0.so.0 \
+  /usr/lib64/libglib-2.0.so.0 \
+  /usr/lib64/libglycin-2.so.0 \
+  /usr/lib64/libgme.so.0 \
+  /usr/lib64/libgmodule-2.0.so.0 \
+  /usr/lib64/libgmp.so.10 \
+  /usr/lib64/libgnutls.so.30 \
+  /usr/lib64/libgobject-2.0.so.0 \
+  /usr/lib64/libgomp.so.1 \
+  /usr/lib64/libgpg-error.so.0 \
+  /usr/lib64/libgraphite2.so.3 \
+  /usr/lib64/libgsm.so.1 \
+  /usr/lib64/libgssapi_krb5.so.2 \
+  /usr/lib64/libharfbuzz.so.0 \
+  /usr/lib64/libhogweed.so.6 \
+  /usr/lib64/libhwy.so.1 \
+  /usr/lib64/libicudata.so.77 \
+  /usr/lib64/libicui18n.so.77 \
+  /usr/lib64/libicuuc.so.77 \
+  /usr/lib64/libidn2.so.0 \
+  /usr/lib64/libilbc.so.3 \
+  /usr/lib64/libjansson.so.4 \
+  /usr/lib64/libjxl.so.0.11 \
+  /usr/lib64/libjxl_cms.so.0.11 \
+  /usr/lib64/libjxl_threads.so.0.11 \
+  /usr/lib64/libk5crypto.so.3 \
+  /usr/lib64/libkeyutils.so.1 \
+  /usr/lib64/libkrb5.so.3 \
+  /usr/lib64/libkrb5support.so.0 \
+  /usr/lib64/liblber.so.2 \
+  /usr/lib64/liblc3.so.1 \
+  /usr/lib64/liblcms2.so.2 \
+  /usr/lib64/libldap.so.2 \
+  /usr/lib64/libldb.so.2 \
+  /usr/lib64/liblpcnetfreedv.so.0.5 \
+  /usr/lib64/liblzma.so.5 \
+  /usr/lib64/libmodplug.so.1 \
+  /usr/lib64/libmount.so.1 \
+  /usr/lib64/libmp3lame.so.0 \
+  /usr/lib64/libmpg123.so.0 \
+  /usr/lib64/libndr-krb5pac.so.0 \
+  /usr/lib64/libndr-nbt.so.0 \
+  /usr/lib64/libndr-standard.so.0 \
+  /usr/lib64/libndr.so.6 \
+  /usr/lib64/libnettle.so.8 \
+  /usr/lib64/libngtcp2.so.16 \
+  /usr/lib64/libngtcp2_crypto_gnutls.so.8 \
+  /usr/lib64/libnuma.so.1 \
+  /usr/lib64/libogg.so.0 \
+  /usr/lib64/libopencore-amrnb.so.0 \
+  /usr/lib64/libopencore-amrwb.so.0 \
+  /usr/lib64/libopenh264.so.8 \
+  /usr/lib64/libopenjp2.so.7 \
+  /usr/lib64/libopenmpt.so.0 \
+  /usr/lib64/libopus.so.0 \
+  /usr/lib64/libp11-kit.so.0 \
+  /usr/lib64/libpango-1.0.so.0 \
+  /usr/lib64/libpangocairo-1.0.so.0 \
+  /usr/lib64/libpangoft2-1.0.so.0 \
+  /usr/lib64/libpcre2-8.so.0 \
+  /usr/lib64/libpgm-5.3.so.0 \
+  /usr/lib64/libpixman-1.so.0 \
+  /usr/lib64/libpng16.so.16 \
+  /usr/lib64/librav1e.so.0 \
+  /usr/lib64/libresolv.so.2 \
+  /usr/lib64/librsvg-2.so.2 \
+  /usr/lib64/libsamba-credentials.so.1 \
+  /usr/lib64/libsamba-errors.so.1 \
+  /usr/lib64/libsamba-hostconfig.so.0 \
+  /usr/lib64/libsamba-util.so.0 \
+  /usr/lib64/libsamdb.so.0 \
+  /usr/lib64/libsasl2.so.3 \
+  /usr/lib64/libseccomp.so.2 \
+  /usr/lib64/libselinux.so.1 \
+  /usr/lib64/libsharpyuv.so.0 \
+  /usr/lib64/libsmbclient.so.0 \
+  /usr/lib64/libsmbconf.so.0 \
+  /usr/lib64/libsnappy.so.1 \
+  /usr/lib64/libsodium.so.26 \
+  /usr/lib64/libsoxr.so.0 \
+  /usr/lib64/libspeex.so.1 \
+  /usr/lib64/libsrt.so.1.5 \
+  /usr/lib64/libssh.so.4 \
+  /usr/lib64/libssl.so.3 \
+  /usr/lib64/libsystemd.so.0 \
+  /usr/lib64/libtalloc.so.2 \
+  /usr/lib64/libtasn1.so.6 \
+  /usr/lib64/libtdb.so.1 \
+  /usr/lib64/libtevent-util.so.0 \
+  /usr/lib64/libtevent.so.0 \
+  /usr/lib64/libthai.so.0 \
+  /usr/lib64/libtheoradec.so.1 \
+  /usr/lib64/libtheoraenc.so.1 \
+  /usr/lib64/libtwolame.so.0 \
+  /usr/lib64/libudfread.so.0 \
+  /usr/lib64/libunistring.so.5 \
+  /usr/lib64/libunwind.so.8 \
+  /usr/lib64/libva-drm.so.2 \
+  /usr/lib64/libva-x11.so.2 \
+  /usr/lib64/libva.so.2 \
+  /usr/lib64/libvdpau.so.1 \
+  /usr/lib64/libvmaf.so.3 \
+  /usr/lib64/libvo-amrwbenc.so.0 \
+  /usr/lib64/libvorbis.so.0 \
+  /usr/lib64/libvorbisenc.so.2 \
+  /usr/lib64/libvorbisfile.so.3 \
+  /usr/lib64/libvpl.so.2 \
+  /usr/lib64/libvpx.so.9 \
+  /usr/lib64/libvvenc.so.1.13 \
+  /usr/lib64/libwbclient.so.0 \
+  /usr/lib64/libwebp.so.7 \
+  /usr/lib64/libwebpmux.so.3 \
+  /usr/lib64/libx264.so.165 \
+  /usr/lib64/libx265.so.215 \
+  /usr/lib64/libxcb-dri3.so.0 \
+  /usr/lib64/libxcb-render.so.0 \
+  /usr/lib64/libxcb-shm.so.0 \
+  /usr/lib64/libxcb.so.1 \
+  /usr/lib64/libxml2.so.2 \
+  /usr/lib64/libxvidcore.so.4 \
+  /usr/lib64/libz.so.1 \
+  /usr/lib64/libzmq.so.5 \
+  /usr/lib64/libzvbi.so.0 \
+  /usr/lib64/samba/libCHARSET3-private-samba.so \
+  /usr/lib64/samba/libMESSAGING-SEND-private-samba.so \
+  /usr/lib64/samba/libaddns-private-samba.so \
+  /usr/lib64/samba/libasn1util-private-samba.so \
+  /usr/lib64/samba/libauthkrb5-private-samba.so \
+  /usr/lib64/samba/libcli-cldap-private-samba.so \
+  /usr/lib64/samba/libcli-ldap-common-private-samba.so \
+  /usr/lib64/samba/libcli-ldap-private-samba.so \
+  /usr/lib64/samba/libcli-nbt-private-samba.so \
+  /usr/lib64/samba/libcli-smb-common-private-samba.so \
+  /usr/lib64/samba/libcliauth-private-samba.so \
+  /usr/lib64/samba/libclidns-private-samba.so \
+  /usr/lib64/samba/libcluster-private-samba.so \
+  /usr/lib64/samba/libcommon-auth-private-samba.so \
+  /usr/lib64/samba/libdbwrap-private-samba.so \
+  /usr/lib64/samba/libdcerpc-samba-private-samba.so \
+  /usr/lib64/samba/libflag-mapping-private-samba.so \
+  /usr/lib64/samba/libgenrand-private-samba.so \
+  /usr/lib64/samba/libgensec-private-samba.so \
+  /usr/lib64/samba/libgse-private-samba.so \
+  /usr/lib64/samba/libinterfaces-private-samba.so \
+  /usr/lib64/samba/libiov-buf-private-samba.so \
+  /usr/lib64/samba/libkrb5samba-private-samba.so \
+  /usr/lib64/samba/libldbsamba-private-samba.so \
+  /usr/lib64/samba/liblibcli-lsa3-private-samba.so \
+  /usr/lib64/samba/liblibsmb-private-samba.so \
+  /usr/lib64/samba/libmessages-dgm-private-samba.so \
+  /usr/lib64/samba/libmessages-util-private-samba.so \
+  /usr/lib64/samba/libmsghdr-private-samba.so \
+  /usr/lib64/samba/libmsrpc3-private-samba.so \
+  /usr/lib64/samba/libndr-samba-private-samba.so \
+  /usr/lib64/samba/libndr-samba4-private-samba.so \
+  /usr/lib64/samba/libnetif-private-samba.so \
+  /usr/lib64/samba/libnpa-tstream-private-samba.so \
+  /usr/lib64/samba/libquic-private-samba.so \
+  /usr/lib64/samba/libreplace-private-samba.so \
+  /usr/lib64/samba/libsamba-cluster-support-private-samba.so \
+  /usr/lib64/samba/libsamba-debug-private-samba.so \
+  /usr/lib64/samba/libsamba-modules-private-samba.so \
+  /usr/lib64/samba/libsamba-security-private-samba.so \
+  /usr/lib64/samba/libsamba-security-trusts-private-samba.so \
+  /usr/lib64/samba/libsamba-sockets-private-samba.so \
+  /usr/lib64/samba/libsamba3-util-private-samba.so \
+  /usr/lib64/samba/libsamdb-common-private-samba.so \
+  /usr/lib64/samba/libsecrets3-private-samba.so \
+  /usr/lib64/samba/libserver-id-db-private-samba.so \
+  /usr/lib64/samba/libserver-role-private-samba.so \
+  /usr/lib64/samba/libsmbd-shim-private-samba.so \
+  /usr/lib64/samba/libsocket-blocking-private-samba.so \
+  /usr/lib64/samba/libstable-sort-private-samba.so \
+  /usr/lib64/samba/libsys-rw-private-samba.so \
+  /usr/lib64/samba/libtalloc-report-printf-private-samba.so \
+  /usr/lib64/samba/libtdb-wrap-private-samba.so \
+  /usr/lib64/samba/libtime-basic-private-samba.so \
+  /usr/lib64/samba/libutil-reg-private-samba.so \
+  /usr/lib64/samba/libutil-setid-private-samba.so \
+  /usr/lib64/samba/libutil-tdb-private-samba.so \
+  CMakeFiles/Editor.dir/export_ui.cpp.o \
+  CMakeFiles/Editor.dir/imgui/imgui.cpp.o \
+  CMakeFiles/Editor.dir/imgui/imgui_demo.cpp.o \
+  CMakeFiles/Editor.dir/imgui/imgui_draw.cpp.o \
+  CMakeFiles/Editor.dir/imgui/imgui_impl_sdl2.cpp.o \
+  CMakeFiles/Editor.dir/imgui/imgui_impl_sdlrenderer2.cpp.o \
+  CMakeFiles/Editor.dir/imgui/imgui_tables.cpp.o \
+  CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o \
+  CMakeFiles/Editor.dir/main.cpp.o \
+  CMakeFiles/Editor.dir/project_manager.cpp.o \
+  CMakeFiles/Editor.dir/ui.cpp.o \
+  CMakeFiles/Editor.dir/video_player.cpp.o
+
+
+CMakeFiles/Editor.dir/ui.cpp.o:
+
+CMakeFiles/Editor.dir/main.cpp.o:
+
+CMakeFiles/Editor.dir/imgui/imgui_impl_sdlrenderer2.cpp.o:
+
+CMakeFiles/Editor.dir/imgui/imgui_impl_sdl2.cpp.o:
+
+CMakeFiles/Editor.dir/imgui/imgui_draw.cpp.o:
+
+/usr/lib64/samba/libutil-tdb-private-samba.so:
+
+/usr/lib64/samba/libutil-reg-private-samba.so:
+
+/usr/lib64/samba/libsys-rw-private-samba.so:
+
+/usr/lib64/samba/libsocket-blocking-private-samba.so:
+
+/usr/lib64/samba/libsmbd-shim-private-samba.so:
+
+/usr/lib64/samba/libserver-role-private-samba.so:
+
+/usr/lib64/samba/libsecrets3-private-samba.so:
+
+/usr/lib64/samba/libsamba3-util-private-samba.so:
+
+/usr/lib64/samba/libsamba-sockets-private-samba.so:
+
+/usr/lib64/samba/libsamba-security-private-samba.so:
+
+/usr/lib64/samba/libsamba-modules-private-samba.so:
+
+/usr/lib64/samba/libsamba-debug-private-samba.so:
+
+/usr/lib64/samba/libquic-private-samba.so:
+
+/usr/lib64/samba/libnpa-tstream-private-samba.so:
+
+/usr/lib64/samba/libnetif-private-samba.so:
+
+/usr/lib64/samba/libndr-samba4-private-samba.so:
+
+/usr/lib64/samba/libmsrpc3-private-samba.so:
+
+/usr/lib64/samba/libmsghdr-private-samba.so:
+
+/usr/lib64/samba/libmessages-dgm-private-samba.so:
+
+/usr/lib64/samba/liblibcli-lsa3-private-samba.so:
+
+/usr/lib64/samba/libldbsamba-private-samba.so:
+
+/usr/lib64/samba/libiov-buf-private-samba.so:
+
+/usr/lib64/samba/libinterfaces-private-samba.so:
+
+/usr/lib64/samba/libdcerpc-samba-private-samba.so:
+
+/usr/lib64/samba/libcommon-auth-private-samba.so:
+
+/usr/lib64/samba/libcluster-private-samba.so:
+
+/usr/lib64/samba/libcliauth-private-samba.so:
+
+/usr/lib64/samba/libcli-ldap-common-private-samba.so:
+
+/usr/lib64/samba/libaddns-private-samba.so:
+
+/usr/lib64/samba/libMESSAGING-SEND-private-samba.so:
+
+/usr/lib64/samba/libCHARSET3-private-samba.so:
+
+/usr/lib64/libz.so.1:
+
+/usr/lib64/libxml2.so.2:
+
+/usr/lib64/libxcb.so.1:
+
+/usr/lib64/libx265.so.215:
+
+/usr/lib64/libx264.so.165:
+
+/usr/lib64/libwebpmux.so.3:
+
+/usr/lib64/libwebp.so.7:
+
+/usr/lib64/libvpl.so.2:
+
+/usr/lib64/libvorbisfile.so.3:
+
+/usr/lib64/libvo-amrwbenc.so.0:
+
+/usr/lib64/libvmaf.so.3:
+
+/usr/lib64/libvdpau.so.1:
+
+/usr/lib64/libtwolame.so.0:
+
+/usr/lib64/libtheoraenc.so.1:
+
+/usr/lib64/libtheoradec.so.1:
+
+/usr/lib64/libthai.so.0:
+
+/usr/lib64/libtdb.so.1:
+
+/usr/lib64/libtasn1.so.6:
+
+/usr/lib64/libtalloc.so.2:
+
+/usr/lib64/libssh.so.4:
+
+/usr/lib64/libsrt.so.1.5:
+
+/usr/lib64/libspeex.so.1:
+
+/usr/lib64/libsodium.so.26:
+
+/usr/lib64/libsnappy.so.1:
+
+/usr/lib64/libsmbconf.so.0:
+
+/usr/lib64/libselinux.so.1:
+
+/usr/lib64/libsamba-util.so.0:
+
+/usr/lib64/libsamba-errors.so.1:
+
+/usr/lib64/libsamba-credentials.so.1:
+
+/usr/lib64/libresolv.so.2:
+
+/usr/lib64/librav1e.so.0:
+
+/usr/lib64/libpng16.so.16:
+
+/usr/lib64/libpgm-5.3.so.0:
+
+/usr/lib64/samba/libgensec-private-samba.so:
+
+/usr/lib64/libpcre2-8.so.0:
+
+/usr/lib64/librsvg-2.so.2:
+
+/usr/lib64/libpango-1.0.so.0:
+
+/usr/lib64/libopenmpt.so.0:
+
+/usr/lib64/libopenjp2.so.7:
+
+/usr/lib64/libopenh264.so.8:
+
+/usr/lib64/libopencore-amrwb.so.0:
+
+/usr/lib64/libopencore-amrnb.so.0:
+
+/usr/lib64/libogg.so.0:
+
+/usr/lib64/libnuma.so.1:
+
+/usr/lib64/libngtcp2_crypto_gnutls.so.8:
+
+/usr/lib64/libngtcp2.so.16:
+
+/usr/lib64/libnettle.so.8:
+
+/usr/lib64/libndr-nbt.so.0:
+
+/usr/lib64/libndr-krb5pac.so.0:
+
+/usr/lib64/samba/libcli-smb-common-private-samba.so:
+
+/usr/lib64/libmp3lame.so.0:
+
+/usr/lib64/libmount.so.1:
+
+/usr/lib64/libmodplug.so.1:
+
+/usr/lib64/liblpcnetfreedv.so.0.5:
+
+/usr/lib64/libldap.so.2:
+
+/usr/lib64/liblcms2.so.2:
+
+/usr/lib64/liblc3.so.1:
+
+/usr/lib64/libkrb5.so.3:
+
+/usr/lib64/libk5crypto.so.3:
+
+/usr/lib64/samba/liblibsmb-private-samba.so:
+
+/usr/lib64/libjxl_threads.so.0.11:
+
+/usr/lib64/libjxl_cms.so.0.11:
+
+/usr/lib64/libjansson.so.4:
+
+/usr/lib64/libilbc.so.3:
+
+/usr/lib64/libidn2.so.0:
+
+/usr/lib64/libicui18n.so.77:
+
+/usr/lib64/libicudata.so.77:
+
+/usr/lib64/libgssapi_krb5.so.2:
+
+/usr/lib64/libgraphite2.so.3:
+
+/usr/lib64/samba/libtdb-wrap-private-samba.so:
+
+/usr/lib64/libgmodule-2.0.so.0:
+
+/usr/lib64/libgme.so.0:
+
+/usr/lib64/libglycin-2.so.0:
+
+/usr/lib64/libfribidi.so.0:
+
+/usr/lib64/libffi.so.8:
+
+/usr/lib64/libevent-2.1.so.7:
+
+/usr/lib64/samba/libtalloc-report-printf-private-samba.so:
+
+/usr/lib64/libpangoft2-1.0.so.0:
+
+/usr/lib64/libdatrie.so.1:
+
+/usr/lib64/libcrypto.so.3:
+
+/usr/lib64/libcrypt.so.2:
+
+CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
+
+/usr/lib64/libcodec2.so.1.2:
+
+/usr/lib64/libcairo-gobject.so.2:
+
+/usr/lib64/libbz2.so.1:
+
+/usr/lib64/libgio-2.0.so.0:
+
+/usr/lib64/libbrotlidec.so.1:
+
+/usr/lib64/libzvbi.so.0:
+
+/usr/lib64/libbrotlicommon.so.1:
+
+/usr/lib64/samba/libauthkrb5-private-samba.so:
+
+/usr/lib64/libbluray.so.2:
+
+/usr/lib64/libblkid.so.1:
+
+/usr/lib64/libaribcaption.so.1:
+
+/usr/lib64/libaom.so.3:
+
+/usr/lib64/libXfixes.so.3:
+
+/usr/lib64/libXext.so.6:
+
+/usr/lib64/libX11.so.6:
+
+/usr/lib64/libSDL2-2.0.so.0.3200.64:
+
+/usr/lib64/libOpenCL.so.1:
+
+/usr/lib/libcairo-gobject.so.2:
+
+/usr/lib/gcc/x86_64-redhat-linux/15/libgcc_s.so:
+
+/usr/lib/gcc/x86_64-redhat-linux/15/crtend.o:
+
+/usr/lib/gcc/x86_64-redhat-linux/15/crtbegin.o:
+
+/usr/lib64/libswscale.so:
+
+/usr/lib64/libswresample.so:
+
+/usr/lib64/libm.so:
+
+/usr/lib64/libavformat.so:
+
+/usr/lib64/libavcodec.so:
+
+/usr/lib64/crtn.o:
+
+/usr/lib64/crt1.o:
+
+/lib64/libgcc_s.so.1:
+
+/lib64/libcairo-gobject.so.2:
+
+/lib/libcairo-gobject.so.2:
 
 /home/mark/Documents/Projects/VideoEditor/video_player.cpp:
 
 /usr/include/c++/15/x86_64-redhat-linux/bits/basic_file.h:
+
+/usr/lib64/libsasl2.so.3:
 
 /usr/include/c++/15/bits/fstream.tcc:
 
@@ -3981,6 +4535,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512bitalgintrin.h:
 
+/usr/lib64/libglib-2.0.so.0:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512cdintrin.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx2intrin.h:
@@ -4001,15 +4557,21 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/SDL2/SDL_config_unix.h:
 
+/usr/lib64/libp11-kit.so.0:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/amxmovrsintrin.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/amxavx512intrin.h:
+
+CMakeFiles/Editor.dir/project_manager.cpp.o:
 
 /usr/include/c++/15/locale:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/adxintrin.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/lzcntintrin.h:
+
+/usr/lib64/libgnutls.so.30:
 
 /usr/include/unistd.h:
 
@@ -4051,9 +4613,13 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/bits/stdint-uintn.h:
 
+/usr/lib64/libtevent.so.0:
+
 /usr/include/c++/15/x86_64-redhat-linux/bits/gthr.h:
 
 /usr/include/sys/ucontext.h:
+
+/usr/lib64/liblber.so.2:
 
 /usr/include/bits/signal_ext.h:
 
@@ -4067,11 +4633,15 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/cstdio:
 
+/usr/lib64/libxcb-dri3.so.0:
+
 /usr/include/bits/sigaction.h:
 
 /usr/include/bits/pthread_stack_min-dynamic.h:
 
 /usr/include/bits/types/stack_t.h:
+
+/usr/lib64/libdrm.so.2:
 
 /usr/include/bits/posix2_lim.h:
 
@@ -4117,6 +4687,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/math.h:
 
+/usr/lib64/libavutil.so:
+
 /usr/include/c++/15/x86_64-redhat-linux/bits/c++allocator.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/immintrin.h:
@@ -4137,6 +4709,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/tr1/modified_bessel_func.tcc:
 
+/usr/lib64/libjxl.so.0.11:
+
 /usr/include/c++/15/tr1/legendre_function.tcc:
 
 /usr/include/time.h:
@@ -4151,6 +4725,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/bits/std_thread.h:
 
+/usr/lib64/libcom_err.so.2:
+
 /usr/include/bits/unistd_ext.h:
 
 /usr/include/c++/15/x86_64-redhat-linux/bits/cpu_defines.h:
@@ -4159,7 +4735,15 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/bits/types/sigevent_t.h:
 
+/usr/lib64/libgomp.so.1:
+
 /usr/include/c++/15/x86_64-redhat-linux/bits/c++locale.h:
+
+/usr/lib64/libudfread.so.0:
+
+/usr/lib64/libsamdb.so.0:
+
+/usr/lib64/libcap.so.2:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/usermsrintrin.h:
 
@@ -4168,6 +4752,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/c++/15/tr1/bessel_function.tcc:
 
 /usr/include/c++/15/string_view:
+
+/usr/lib64/libndr-standard.so.0:
 
 /usr/include/bits/sigcontext.h:
 
@@ -4193,6 +4779,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/typeinfo:
 
+/usr/lib64/samba/libreplace-private-samba.so:
+
 /usr/include/bits/posix_opt.h:
 
 /usr/include/signal.h:
@@ -4207,6 +4795,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/features.h:
 
+/usr/lib64/libcairo.so.2:
+
 /usr/include/c++/15/tr1/exp_integral.tcc:
 
 /usr/include/bits/types.h:
@@ -4214,6 +4804,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/bits/dl_find_object.h:
 
 /usr/include/c++/15/bits/ostream_insert.h:
+
+/usr/lib64/libsamba-hostconfig.so.0:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx10_2bf16intrin.h:
 
@@ -4249,17 +4841,27 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx10_2-512mediaintrin.h:
 
+/usr/lib64/samba/libasn1util-private-samba.so:
+
+/usr/lib64/libfreetype.so.6:
+
 /usr/include/bits/pthreadtypes-arch.h:
 
 /usr/include/bits/types/struct_FILE.h:
 
 /usr/include/sys/wait.h:
 
+/usr/lib64/libXau.so.6:
+
 /usr/include/bits/stdlib-float.h:
 
 /usr/include/SDL2/SDL_metal.h:
 
+/usr/lib64/libdav1d.so.7:
+
 /usr/include/c++/15/x86_64-redhat-linux/bits/gthr-default.h:
+
+/usr/lib64/liblzma.so.5:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/amxbf16intrin.h:
 
@@ -4275,6 +4877,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/wbnoinvdintrin.h:
 
+CMakeFiles/Editor.dir/imgui/imgui_demo.cpp.o:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx10_2convertintrin.h:
 
 /usr/include/c++/15/bits/chrono.h:
@@ -4284,6 +4888,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/SDL2/SDL_rect.h:
 
 /home/mark/Documents/Projects/VideoEditor/imgui/imgui_demo.cpp:
+
+/usr/lib64/libgdk_pixbuf-2.0.so.0:
 
 /usr/include/SDL2/SDL_vulkan.h:
 
@@ -4323,9 +4929,15 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/bits/stl_vector.h:
 
+/usr/lib64/libxvidcore.so.4:
+
+/usr/lib64/libsmbclient.so.0:
+
 /home/mark/Documents/Projects/VideoEditor/imgui/imconfig.h:
 
 /usr/include/c++/15/bits/new_allocator.h:
+
+/usr/lib64/libzmq.so.5:
 
 /usr/include/bits/dlfcn.h:
 
@@ -4349,6 +4961,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/type_traits:
 
+/usr/lib64/crti.o:
+
 /usr/include/bits/types/__fpos64_t.h:
 
 /usr/include/c++/15/bit:
@@ -4363,13 +4977,23 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/tbmintrin.h:
 
+CMakeFiles/Editor.dir/export_ui.cpp.o:
+
+/usr/lib64/samba/libtime-basic-private-samba.so:
+
+/usr/lib64/samba/libsamba-security-trusts-private-samba.so:
+
 /usr/include/bits/fp-fast.h:
 
 /usr/include/bits/ss_flags.h:
 
+/usr/lib64/samba/libsamdb-common-private-samba.so:
+
 /usr/include/stdio.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512vp2intersectintrin.h:
+
+/usr/lib64/libunistring.so.5:
 
 /usr/include/bits/iscanonical.h:
 
@@ -4378,6 +5002,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/c++/15/codecvt:
 
 /usr/include/c++/15/ext/type_traits.h:
+
+/usr/lib64/libmpg123.so.0:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/pconfigintrin.h:
 
@@ -4396,6 +5022,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/bits/types/__fpos_t.h:
 
 /usr/include/bits/types/sig_atomic_t.h:
+
+/usr/lib64/libfontconfig.so.1:
 
 /usr/include/linux/sched/types.h:
 
@@ -4417,6 +5045,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/bits/mathcalls-narrow.h:
 
+/usr/lib64/libgmp.so.10:
+
 /usr/include/bits/types/wint_t.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/rtmintrin.h:
@@ -4426,6 +5056,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/bits/uintn-identity.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/lwpintrin.h:
+
+/usr/lib64/libhogweed.so.6:
 
 /usr/include/c++/15/math.h:
 
@@ -4459,6 +5091,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/bits/exception_defines.h:
 
+/usr/lib64/libc_nonshared.a:
+
 /usr/include/c++/15/bits/stl_heap.h:
 
 /usr/include/bits/sigthread.h:
@@ -4485,25 +5119,37 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/cmath:
 
+/lib64/libmvec.so.1:
+
 /usr/include/c++/15/ext/string_conversions.h:
 
 /usr/include/bits/signum-generic.h:
 
 /usr/include/c++/15/initializer_list:
 
+/usr/lib64/libssl.so.3:
+
 /usr/include/c++/15/x86_64-redhat-linux/bits/time_members.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx10_2-512satcvtintrin.h:
 
+/usr/lib64/libdcerpc-binding.so.0:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512vp2intersectvlintrin.h:
 
+/usr/lib64/libsharpyuv.so.0:
+
 /usr/include/c++/15/bits/hash_bytes.h:
+
+/usr/lib64/samba/libcli-ldap-private-samba.so:
 
 /usr/include/c++/15/algorithm:
 
 /usr/include/bits/types/struct_timespec.h:
 
 /usr/include/SDL2/SDL_hidapi.h:
+
+/usr/lib64/libc.so:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/prfchiintrin.h:
 
@@ -4514,6 +5160,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/ffmpeg/libavutil/frame.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512vldqintrin.h:
+
+/usr/lib64/libsoxr.so.0:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/amxfp8intrin.h:
 
@@ -4531,9 +5179,15 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/bits/stl_iterator_base_funcs.h:
 
+/usr/lib64/libunwind.so.8:
+
+/usr/lib64/libbrotlienc.so.1:
+
 /usr/include/bits/xopen_lim.h:
 
 /usr/include/c++/15/bits/string_view.tcc:
+
+/usr/lib64/libsystemd.so.0:
 
 /usr/include/c++/15/bits/ptr_traits.h:
 
@@ -4549,6 +5203,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/concepts:
 
+/usr/lib64/libxcb-render.so.0:
+
 /usr/include/c++/15/debug/debug.h:
 
 /home/mark/Documents/Projects/VideoEditor/imgui/imgui_internal.h:
@@ -4557,11 +5213,17 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/bits/requires_hosted.h:
 
+/usr/lib64/samba/libserver-id-db-private-samba.so:
+
+/usr/lib64/libhwy.so.1:
+
 /usr/include/bits/sched.h:
 
 /usr/include/bits/struct_rwlock.h:
 
 /usr/include/c++/15/filesystem:
+
+CMakeFiles/Editor.dir/imgui/imgui_tables.cpp.o:
 
 /usr/include/dlfcn.h:
 
@@ -4576,6 +5238,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/SDL2/SDL_config-x86_64.h:
 
 /usr/include/c++/15/bits/fs_dir.h:
+
+/usr/lib64/samba/libgse-private-samba.so:
 
 /usr/include/c++/15/ext/alloc_traits.h:
 
@@ -4599,6 +5263,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512vnniintrin.h:
 
+/usr/lib64/libndr.so.6:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512vnnivlintrin.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512vpopcntdqvlintrin.h:
@@ -4606,6 +5272,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avxifmaintrin.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/gfniintrin.h:
+
+/usr/lib64/libldb.so.2:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avxintrin.h:
 
@@ -4630,6 +5298,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/c++/15/bits/utility.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avxvnniintrin.h:
+
+/usr/lib64/libgsm.so.1:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/bmi2intrin.h:
 
@@ -4663,6 +5333,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/enqcmdintrin.h:
 
+/usr/lib64/libicuuc.so.77:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/f16cintrin.h:
 
 /usr/include/linux/stddef.h:
@@ -4670,6 +5342,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/bits/fp-logb.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/keylockerintrin.h:
+
+/usr/lib64/libaribb24.so.0:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/mm_malloc.h:
 
@@ -4685,7 +5359,13 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/popcntintrin.h:
 
+/usr/lib64/samba/libndr-samba-private-samba.so:
+
+/usr/lib64/samba/libcli-nbt-private-samba.so:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/prfchwintrin.h:
+
+/usr/lib64/libopus.so.0:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/serializeintrin.h:
 
@@ -4695,11 +5375,15 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/sm4intrin.h:
 
+CMakeFiles/Editor.dir/video_player.cpp.o:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/smmintrin.h:
 
 /usr/include/bits/sigevent-consts.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/stdint.h:
+
+/usr/lib64/libkrb5support.so.0:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512vbmi2intrin.h:
 
@@ -4715,7 +5399,13 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/vaesintrin.h:
 
+/usr/lib64/libharfbuzz.so.0:
+
+/usr/lib64/libgcrypt.so.20:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/vpclmulqdqintrin.h:
+
+/usr/lib64/samba/libcli-cldap-private-samba.so:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/waitpkgintrin.h:
 
@@ -4727,13 +5417,19 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/xsaveintrin.h:
 
+/usr/lib64/samba/libmessages-util-private-samba.so:
+
 /usr/include/locale.h:
 
 /usr/include/c++/15/bits/allocated_ptr.h:
 
+/lib64/ld-linux-x86-64.so.2:
+
 /usr/include/c++/15/bits/istream.tcc:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/xsavesintrin.h:
+
+/usr/lib/gcc/x86_64-redhat-linux/15/libstdc++.so:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/xtestintrin.h:
 
@@ -4753,13 +5449,19 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/SDL2/SDL.h:
 
+/usr/lib64/libva.so.2:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512vpopcntdqintrin.h:
 
 /usr/include/SDL2/SDL_assert.h:
 
 /usr/include/SDL2/SDL_audio.h:
 
+/usr/lib64/libva-drm.so.2:
+
 /usr/include/SDL2/SDL_blendmode.h:
+
+/usr/lib64/libvorbis.so.0:
 
 /usr/include/SDL2/SDL_cpuinfo.h:
 
@@ -4771,11 +5473,15 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/SDL2/SDL_events.h:
 
+/usr/lib64/samba/libflag-mapping-private-samba.so:
+
 /usr/include/SDL2/SDL_filesystem.h:
 
 /usr/include/SDL2/SDL_gamecontroller.h:
 
 /usr/include/SDL2/SDL_haptic.h:
+
+/usr/lib64/libxcb-shm.so.0:
 
 /usr/include/SDL2/SDL_hints.h:
 
@@ -4807,11 +5513,15 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/SDL2/SDL_misc.h:
 
+/usr/lib64/libseccomp.so.2:
+
 /usr/include/ffmpeg/libswscale/swscale.h:
 
 /usr/include/c++/15/backward/binders.h:
 
 /usr/include/c++/15/exception:
+
+/usr/lib/gcc/x86_64-redhat-linux/15/libgcc.a:
 
 /usr/include/SDL2/SDL_mutex.h:
 
@@ -4830,6 +5540,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/SDL2/SDL_quit.h:
 
 /usr/include/SDL2/SDL_shape.h:
+
+/usr/lib64/libSvtAv1Enc.so.3:
 
 /home/mark/Documents/Projects/VideoEditor/ui.h:
 
@@ -4851,6 +5563,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/SDL2/SDL_system.h:
 
+CMakeFiles/Editor.dir/imgui/imgui.cpp.o:
+
 /usr/include/SDL2/SDL_syswm.h:
 
 /usr/include/SDL2/SDL_thread.h:
@@ -4865,11 +5579,15 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/X11/X.h:
 
+/usr/lib64/samba/libutil-setid-private-samba.so:
+
 /usr/include/SDL2/SDL_timer.h:
 
 /usr/include/X11/Xfuncproto.h:
 
 /usr/include/X11/Xlib.h:
+
+/usr/lib64/libkeyutils.so.1:
 
 /usr/include/ffmpeg/libavcodec/avcodec.h:
 
@@ -4883,13 +5601,19 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdlrenderer2.h:
 
+/usr/lib64/libvorbisenc.so.2:
+
 /home/mark/Documents/Projects/VideoEditor/imgui/imgui_tables.cpp:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/amxcomplexintrin.h:
 
 /home/mark/Documents/Projects/VideoEditor/imgui/imstb_textedit.h:
 
+/usr/lib64/samba/libdbwrap-private-samba.so:
+
 /usr/include/asm/posix_types.h:
+
+/usr/lib64/libpixman-1.so.0:
 
 /usr/include/bits/time.h:
 
@@ -4901,9 +5625,13 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/vector:
 
+/usr/lib64/libvpx.so.9:
+
 /home/mark/Documents/Projects/VideoEditor/video_player.h:
 
 /usr/include/asm-generic/bitsperlong.h:
+
+/usr/lib64/libva-x11.so.2:
 
 /usr/include/asm-generic/types.h:
 
@@ -4912,6 +5640,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/asm-generic/int-ll64.h:
 
 /usr/include/asm/posix_types_64.h:
+
+/usr/lib64/libchromaprint.so.1:
 
 /usr/include/c++/15/bits/shared_ptr.h:
 
@@ -4939,13 +5669,21 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/ffmpeg/libavcodec/defs.h:
 
+/lib64/libm.so.6:
+
 /usr/include/c++/15/pstl/pstl_config.h:
 
 /usr/include/c++/15/bits/basic_ios.tcc:
 
+/usr/lib64/libvvenc.so.1.13:
+
 /usr/include/c++/15/bits/cxxabi_init_exception.h:
 
 /usr/include/c++/15/bits/fs_ops.h:
+
+/usr/lib64/samba/libgenrand-private-samba.so:
+
+/usr/lib64/libpangocairo-1.0.so.0:
 
 /usr/include/sys/types.h:
 
@@ -4963,6 +5701,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/bits/locale_facets.tcc:
 
+/usr/lib64/samba/libkrb5samba-private-samba.so:
+
 /usr/include/c++/15/bits/locale_facets_nonio.h:
 
 /usr/include/c++/15/bits/memoryfwd.h:
@@ -4975,7 +5715,11 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/bits/parse_numbers.h:
 
+/usr/lib64/samba/libclidns-private-samba.so:
+
 /usr/include/ffmpeg/libavformat/avio.h:
+
+/usr/lib64/libgobject-2.0.so.0:
 
 /usr/include/SDL2/SDL_rwops.h:
 
@@ -5017,6 +5761,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/cwctype:
 
+/usr/lib64/libwbclient.so.0:
+
 /usr/include/c++/15/ext/concurrence.h:
 
 /usr/include/c++/15/ext/atomicity.h:
@@ -5029,9 +5775,13 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/istream:
 
+/usr/lib64/libtevent-util.so.0:
+
 /usr/include/c++/15/x86_64-redhat-linux/bits/ctype_base.h:
 
 /usr/include/c++/15/pstl/execution_defs.h:
+
+/usr/lib64/samba/libstable-sort-private-samba.so:
 
 /usr/include/c++/15/ratio:
 
@@ -5042,6 +5792,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 /usr/include/c++/15/thread:
 
 /usr/include/c++/15/x86_64-redhat-linux/bits/atomic_word.h:
+
+/lib64/libc.so.6:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/amxtileintrin.h:
 
@@ -5055,7 +5807,11 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/c++/15/x86_64-redhat-linux/bits/messages_members.h:
 
+/usr/lib64/libXrender.so.1:
+
 /usr/include/ffmpeg/libavutil/macros.h:
+
+/usr/lib64/libX11-xcb.so.1:
 
 /usr/include/ffmpeg/libavcodec/codec_par.h:
 
@@ -5071,10 +5827,14 @@ CMakeFiles/Editor.dir/video_player.cpp.o: /home/mark/Documents/Projects/VideoEdi
 
 /usr/include/ffmpeg/libavutil/error.h:
 
+/usr/lib64/samba/libsamba-cluster-support-private-samba.so:
+
 /usr/include/ffmpeg/libavutil/imgutils.h:
 
 /usr/include/bits/libc-header-start.h:
 
 /usr/include/ffmpeg/libavutil/mathematics.h:
+
+/usr/lib64/libgpg-error.so.0:
 
 /usr/include/ffmpeg/libavutil/mem.h:

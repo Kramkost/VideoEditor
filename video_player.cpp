@@ -154,29 +154,44 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
         if (audioDevice) SDL_PauseAudioDevice(audioDevice, 0); 
         
         if (!isImage) {
-            if (targetTimeSec - currentSec > 0.15) videoCodecCtx->skip_frame = AVDISCARD_NONREF; 
-            else videoCodecCtx->skip_frame = AVDISCARD_DEFAULT;
+            // ФИКС 1: ЗАЩИТА ОТ ПУСТОГО ВИДЕО (Если это просто аудиофайл)
+            if (videoCodecCtx) {
+                if (targetTimeSec - currentSec > 0.15) videoCodecCtx->skip_frame = AVDISCARD_NONREF; 
+                else videoCodecCtx->skip_frame = AVDISCARD_DEFAULT;
+            }
 
             int loopProtection = 0; 
             while (currentSec <= targetTimeSec && loopProtection < 10 && av_read_frame(formatCtx, pPacket) >= 0) {
                 loopProtection++;
-                if (pPacket->stream_index == videoStreamIndex) {
+                
+                // Обработка ВИДЕО
+                if (pPacket->stream_index == videoStreamIndex && videoCodecCtx) {
                     avcodec_send_packet(videoCodecCtx, pPacket);
                     if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
                         currentSec = pFrame->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
                         frameDecoded = true; 
                     }
                 }
+                // Обработка АУДИО
                 else if (pPacket->stream_index == audioStreamIndex && audioDevice) {
                     double audioPtsSec = pPacket->pts * av_q2d(formatCtx->streams[audioStreamIndex]->time_base);
+                    
+                    // ФИКС 2: ЕСЛИ ЭТО ТОЛЬКО АУДИО (НЕТ ВИДЕО), ВРЕМЯ ДИКТУЕТ ЗВУК!
+                    if (videoStreamIndex == -1) {
+                        currentSec = audioPtsSec; 
+                    }
+
                     avcodec_send_packet(audioCodecCtx, pPacket);
                     while (avcodec_receive_frame(audioCodecCtx, aFrame) == 0) {
-                        if (audioPtsSec >= targetTimeSec - 0.15) {
-                            int out_samples = swr_convert(swrCtx, &audioBuffer, 192000, (const uint8_t**)aFrame->data, aFrame->nb_samples);
-                            int data_size = out_samples * 2 * 2; 
-                            int16_t* samples = (int16_t*)audioBuffer;
-                            for (int i = 0; i < data_size / 2; i++) samples[i] = (int16_t)(samples[i] * currentVolume);
-                            SDL_QueueAudio(audioDevice, audioBuffer, data_size);
+                        // ФИКС 3: Защита swrCtx и проверка на отрицательный результат
+                        if (swrCtx && audioPtsSec >= targetTimeSec - 0.15) {
+                            int out_samples = swr_convert(swrCtx, &audioBuffer, 48000, (const uint8_t**)aFrame->data, aFrame->nb_samples);
+                            if (out_samples > 0) {
+                                int data_size = out_samples * 2 * 2; 
+                                int16_t* samples = (int16_t*)audioBuffer;
+                                for (int i = 0; i < data_size / 2; i++) samples[i] = (int16_t)(samples[i] * currentVolume);
+                                SDL_QueueAudio(audioDevice, audioBuffer, data_size);
+                            }
                         }
                     }
                 }
@@ -186,6 +201,9 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
     } else {
         if (audioDevice) SDL_PauseAudioDevice(audioDevice, 1);
     }
+
+    // TODO: [МАГИЯ ЭФФЕКТОВ НА ПИКСЕЛЯХ]
+    // ... остальной твой код без изменений
 
     // TODO: [МАГИЯ ЭФФЕКТОВ НА ПИКСЕЛЯХ]
     if (drawVideo && (frameDecoded || textureNeedsUpdate) && videoStreamIndex != -1) {

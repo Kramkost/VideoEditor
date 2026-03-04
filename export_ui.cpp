@@ -25,7 +25,30 @@ std::string ExportUI::SaveFileDialog() {
     }
     return "";
 #else
-    return "output.mp4"; // Временный костыль для Linux
+    // --- УНИВЕРСАЛЬНЫЙ LINUX-КОСТЫЛЬ ---
+    
+    // Попытка 1: Вызываем системное графическое окно Linux (Zenity)
+    FILE* pipe = popen("zenity --file-selection --save --title=\"Save Rendered Video\" --confirm-overwrite 2>/dev/null", "r");
+    if (pipe) {
+        char buffer[512];
+        if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            std::string result = buffer;
+            // Убираем невидимый символ переноса строки (\n), который возвращает консоль
+            result.erase(result.find_last_not_of(" \n\r\t") + 1); 
+            pclose(pipe);
+            return result;
+        }
+        pclose(pipe);
+    }
+    
+    // Попытка 2: Если zenity нет, динамически получаем путь к Домашней папке текущего пользователя
+    const char* homeDir = getenv("HOME");
+    if (homeDir) {
+        return std::string(homeDir) + "/output.mp4"; // Сохранит, например, в /home/alex/output.mp4
+    }
+    
+    // Попытка 3: Самый крайний случай (сохранит в папку, откуда запустили программу)
+    return "output.mp4"; 
 #endif
 }
 
