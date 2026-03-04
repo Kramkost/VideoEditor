@@ -1,16 +1,18 @@
 #include <stdint.h>
 #include <algorithm>
+#include <cstdint>
+#include "plugins.h"
 
 
 extern "C" {
 
     // 1. Имя плагина, которое появится в левом меню
-    __declspec(dllexport) const char* GetPluginName() {
-        return "Blood Red (Custom)";
+     TITAN_EXPORT const char* GetPluginName() {
+        return "Blood Red Filter";
     }
 
     // 2. Сама математика эффекта (обрабатывает весь кадр)
-    __declspec(dllexport) void ProcessFrame(uint8_t* pixels, int width, int height, int pitch, float intensity) {
+    TITAN_EXPORT void ProcessFrame(uint8_t* pixels, int width, int height, int pitch, float intensity) {
         for (int y = 0; y < height; ++y) {
             uint8_t* row = pixels + y * pitch;
             for (int x = 0; x < width; ++x) {

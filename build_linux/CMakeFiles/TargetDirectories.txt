@@ -1,0 +1,4 @@
+/home/mark/Documents/Projects/VideoEditor/build_linux/CMakeFiles/Editor.dir
+/home/mark/Documents/Projects/VideoEditor/build_linux/CMakeFiles/blood_filter.dir
+/home/mark/Documents/Projects/VideoEditor/build_linux/CMakeFiles/edit_cache.dir
+/home/mark/Documents/Projects/VideoEditor/build_linux/CMakeFiles/rebuild_cache.dir

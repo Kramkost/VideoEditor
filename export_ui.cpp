@@ -1,9 +1,12 @@
 #include "export_ui.h"
 #include "imgui.h"
-#include <windows.h>
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 #include <cmath> // Для анимации sin()
 
 std::string ExportUI::SaveFileDialog() {
+#ifdef _WIN32
     OPENFILENAMEA ofn;
     CHAR szFile[260] = {0};
     ZeroMemory(&ofn, sizeof(OPENFILENAMEA));
@@ -13,16 +16,17 @@ std::string ExportUI::SaveFileDialog() {
     ofn.nMaxFile = sizeof(szFile);
     ofn.lpstrFilter = "Video Files\0*.mp4\0All Files\0*.*\0";
     
-    // --- ФИКСЫ ---
-    ofn.lpstrDefExt = "mp4"; // Гарантирует расширение .mp4
+    ofn.lpstrDefExt = "mp4"; 
     ofn.nFilterIndex = 1;
-    // OFN_NOCHANGEDIR нужен, чтобы Windows не меняла "текущую папку" приложения, иначе отвалятся плагины!
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR; 
 
     if (GetSaveFileNameA(&ofn) == TRUE) {
         return std::string(ofn.lpstrFile);
     }
     return "";
+#else
+    return "output.mp4"; // Временный костыль для Linux
+#endif
 }
 
 void ExportUI::Draw(bool* showMenu) {

@@ -15,7 +15,9 @@
 #include "imgui.h"
 #include <fstream>
 #include <sstream>
-#include <windows.h>
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 #include <iostream>
 #include <cmath> // Required for sin() animation
 
@@ -255,6 +257,7 @@ bool ProjectManager::LoadProject(const std::string& filepath, ProjectData& outPr
 }
 
 std::string ProjectManager::OpenFileDialog() {
+#ifdef _WIN32
     OPENFILENAMEA ofn; CHAR szFile[260] = {0};
     ZeroMemory(&ofn, sizeof(OPENFILENAMEA));
     ofn.lStructSize = sizeof(OPENFILENAMEA);
@@ -262,10 +265,12 @@ std::string ProjectManager::OpenFileDialog() {
     ofn.lpstrFilter = "Titan Project (*.titansave)\0*.titansave\0All Files\0*.*\0";
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
     if (GetOpenFileNameA(&ofn) == TRUE) return std::string(ofn.lpstrFile);
+#endif
     return "";
 }
 
 std::string ProjectManager::SaveFileDialog() {
+#ifdef _WIN32
     OPENFILENAMEA ofn; CHAR szFile[260] = {0};
     ZeroMemory(&ofn, sizeof(OPENFILENAMEA));
     ofn.lStructSize = sizeof(OPENFILENAMEA);
@@ -274,5 +279,6 @@ std::string ProjectManager::SaveFileDialog() {
     ofn.lpstrFilter = "Titan Project (*.titansave)\0*.titansave\0";
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
     if (GetSaveFileNameA(&ofn) == TRUE) return std::string(ofn.lpstrFile);
+#endif
     return "";
 }

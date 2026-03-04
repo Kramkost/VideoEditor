@@ -335,9 +335,9 @@ int main(int argc, char* argv[]) {
                 if (exportFrameCurrent >= exportFrameTotal) {
                     isExporting = false;
                     #ifdef _WIN32
-                    _pclose(ffmpegPipe);
+                      _pclose(ffmpegPipe);
                     #else
-                    pclose(ffmpegPipe);
+                       pclose(ffmpegPipe);
                     #endif
                     ffmpegPipe = nullptr;
                     currentProgress = 0.0f; 

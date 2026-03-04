@@ -3,7 +3,9 @@
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
 #include <stdio.h> 
-#include <windows.h> 
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 #include <string>
 
 void UIManager::Init(SDL_Window* window, SDL_Renderer* renderer) {
@@ -17,6 +19,7 @@ void UIManager::Init(SDL_Window* window, SDL_Renderer* renderer) {
 void UIManager::ProcessEvent(const SDL_Event* event) { ImGui_ImplSDL2_ProcessEvent(event); }
 
 std::string UIManager::OpenFileDialog() {
+#ifdef _WIN32
     OPENFILENAMEA ofn;
     CHAR szFile[260] = {0};
     ZeroMemory(&ofn, sizeof(OPENFILENAMEA));
@@ -28,9 +31,9 @@ std::string UIManager::OpenFileDialog() {
     ofn.nFilterIndex = 1;
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
     if (GetSaveFileNameA(&ofn) == TRUE) return std::string(ofn.lpstrFile);
+#endif
     return "";
 }
-
 std::string UIManager::Render(int windowW, int windowH, int uiHeight, 
                               float& progress, bool& isPlaying, bool& doSeek,
                               std::vector<VideoClip>& clips, int& selectedClipIndex,
