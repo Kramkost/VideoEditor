@@ -31,7 +31,6 @@ std::string UIManager::OpenFileDialog() {
     return "";
 }
 
-// ВНИМАНИЕ: Здесь убран const перед std::vector<TimelineTrack>& tracks
 std::string UIManager::Render(int windowW, int windowH, int uiHeight, 
                               float& progress, bool& isPlaying, bool& doSeek,
                               std::vector<VideoClip>& clips, int& selectedClipIndex,
@@ -44,11 +43,10 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-// === ВЕРХНЯЯ ПАНЕЛЬ (Main Menu Bar) ===
+    // === ВЕРХНЯЯ ПАНЕЛЬ (Main Menu Bar) ===
     float menuHeight = 0.0f;
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            // --- НОВЫЕ КНОПКИ ---
             if (ImGui::MenuItem("Save Project", "Ctrl+S")) triggerSave = true;
             if (ImGui::MenuItem("Save As...")) triggerSaveAs = true;
             ImGui::Separator();
@@ -94,6 +92,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     int leftPanelWidth = 220;
     int rightPanelWidth = 300;
 
+    // === ОТРИСОВКА ТЕКСТА НА ПРЕВЬЮ ===
     ImDrawList* bg_draw_list = ImGui::GetBackgroundDrawList();
     for (int i = 0; i < clips.size(); i++) {
         if (clips[i].isText && progress >= clips[i].timelineStart && progress < clips[i].timelineEnd) {
@@ -247,38 +246,17 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::SetNextWindowSize(ImVec2(windowW, uiHeight), ImGuiCond_Always);
     ImGui::Begin("Timeline", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
     
+    // --- ВЕРХНИЕ КНОПКИ УПРАВЛЕНИЯ ---
     if (ImGui::Button("Import File", ImVec2(100, 30))) { selectedFile = OpenFileDialog(); }
-    
-    // Анимированная кнопка ADD TEXT
     ImGui::SameLine(); 
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.6f, 0.2f, 1.0f)); 
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.7f, 0.3f, 1.0f)); 
     if (ImGui::Button("+ ADD TEXT", ImVec2(100, 30))) { doAddText = true; } 
     ImGui::PopStyleColor(2);
-    
-    // НОВАЯ КНОПКА: ADD TRACK
-    ImGui::SameLine(); 
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.8f, 1.0f)); 
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.6f, 0.9f, 1.0f)); 
-    if (ImGui::Button("+ ADD TRACK", ImVec2(100, 30))) { ImGui::OpenPopup("AddTrackPopup"); } 
-    ImGui::PopStyleColor(2);
-
-    if (ImGui::BeginPopup("AddTrackPopup")) {
-        if (ImGui::MenuItem("Add Video Track")) {
-            tracks.push_back({"Video " + std::to_string(tracks.size() + 1), TRACK_VIDEO});
-        }
-        if (ImGui::MenuItem("Add Audio Track")) {
-            tracks.push_back({"Audio " + std::to_string(tracks.size() + 1), TRACK_AUDIO});
-        }
-        ImGui::EndPopup();
-    }
-
-    // Кнопка Play/Pause
     ImGui::SameLine();
     ImGui::PushStyleColor(ImGuiCol_Button, isPlaying ? ImVec4(0.8f, 0.2f, 0.2f, 1.0f) : ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
     if (ImGui::Button(isPlaying ? "PAUSE" : "PLAY", ImVec2(80, 30))) isPlaying = !isPlaying;
     ImGui::PopStyleColor();
-
     ImGui::SameLine(); 
     if (ImGui::Button("CUT (Split)", ImVec2(100, 30))) {
         if (clips.size() > 0 && selectedClipIndex >= 0) {
@@ -291,7 +269,6 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             selectedClipIndex++; 
         }
     } 
-
     ImGui::SameLine(); if (clips.empty()) ImGui::BeginDisabled(); 
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.9f, 1.0f)); 
     if (ImGui::Button("EXPORT VIDEO", ImVec2(120, 30))) showExport = true; 
@@ -299,25 +276,59 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
 
     ImGui::Spacing(); ImGui::Separator();
     
-    ImVec2 p = ImGui::GetCursorScreenPos();
-    float trackWidth = ImGui::GetContentRegionAvail().x;
-    float trackHeight = 40.0f; float trackSpacing = 4.0f;
-    float totalTimelineHeight = tracks.size() * (trackHeight + trackSpacing);
+    // --- СКРОЛЛИРУЕМАЯ ЗОНА ДОРОЖЕК (INFINITE TRACKS) ---
+    ImGui::BeginChild("TracksScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+    
+    ImVec2 p = ImGui::GetCursorScreenPos(); // Точка отсчета (учитывает скролл!)
+    float headerW = 140.0f;                 // Ширина левой панели с названиями
+    float trackWidth = ImGui::GetContentRegionAvail().x - headerW;
+    float trackHeight = 40.0f; 
+    float trackSpacing = 4.0f;
+    float totalTimelineHeight = (tracks.size() + 1) * (trackHeight + trackSpacing); // +1 для кнопки ADD
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+    // 1. Отрисовка фона дорожек и левых заголовков
     for (int t = 0; t < tracks.size(); ++t) {
         float currentY = p.y + t * (trackHeight + trackSpacing);
+        // Левый заголовок
+        draw_list->AddRectFilled(ImVec2(p.x, currentY), ImVec2(p.x + headerW - 4, currentY + trackHeight), IM_COL32(30, 30, 30, 255), 4.0f);
+        draw_list->AddText(ImVec2(p.x + 10, currentY + 12), IM_COL32(200, 200, 200, 255), tracks[t].name.c_str());
+        
+        // Правый фон дорожки (Таймлайн)
         ImU32 bgColor = (tracks[t].type == TRACK_VIDEO) ? IM_COL32(40, 40, 45, 255) : IM_COL32(35, 45, 40, 255);
-        draw_list->AddRectFilled(ImVec2(p.x, currentY), ImVec2(p.x + trackWidth, currentY + trackHeight), bgColor);
-        draw_list->AddText(ImVec2(p.x + 5, currentY + 5), IM_COL32(150, 150, 150, 255), tracks[t].name.c_str());
+        draw_list->AddRectFilled(ImVec2(p.x + headerW, currentY), ImVec2(p.x + headerW + trackWidth, currentY + trackHeight), bgColor);
     }
 
+    // 2. Кнопка ДОБАВИТЬ ДОРОЖКУ (Меньше и аккуратнее)
+    float plusY = p.y + tracks.size() * (trackHeight + trackSpacing) + 5.0f; // Отступ сверху
+    ImGui::SetCursorScreenPos(ImVec2(p.x + 10, plusY)); // Отступ слева
+    
+    float time = ImGui::GetTime();
+    float pulse = (std::sin(time * 5.0f) + 1.0f) * 0.5f; 
+    ImVec4 addBtnColor = ImVec4(0.2f + 0.1f * pulse, 0.4f + 0.1f * pulse, 0.6f + 0.2f * pulse, 1.0f);
+    
+    ImGui::PushStyleColor(ImGuiCol_Button, addBtnColor);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.6f, 0.9f, 1.0f));
+    
+    // Кнопка теперь меньше: ширина на 20 пикселей меньше колонки, высота 25
+    if (ImGui::Button("+ ADD TRACK", ImVec2(headerW - 24, 25))) {
+        ImGui::OpenPopup("AddTrackMenu");
+    }
+    ImGui::PopStyleColor(2);
+
+    if (ImGui::BeginPopup("AddTrackMenu")) {
+        if (ImGui::MenuItem("Add Video Track")) tracks.push_back({"Video " + std::to_string(tracks.size() + 1), TRACK_VIDEO});
+        if (ImGui::MenuItem("Add Audio Track")) tracks.push_back({"Audio " + std::to_string(tracks.size() + 1), TRACK_AUDIO});
+        ImGui::EndPopup();
+    }
+
+    // 3. Отрисовка Клипов (С учетом сдвига headerW)
     for (int i = 0; i < clips.size(); i++) {
         int t = clips[i].trackIndex; if (t < 0 || t >= tracks.size()) continue; 
 
         float currentY = p.y + t * (trackHeight + trackSpacing);
-        float x1 = p.x + (clips[i].timelineStart * trackWidth);
-        float x2 = p.x + (clips[i].timelineEnd * trackWidth);
+        float x1 = p.x + headerW + (clips[i].timelineStart * trackWidth);
+        float x2 = p.x + headerW + (clips[i].timelineEnd * trackWidth);
         
         float targetScale = clips[i].isInteracting ? 1.1f : 1.0f;
         clips[i].visualScale += (targetScale - clips[i].visualScale) * 0.3f; 
@@ -340,7 +351,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         auto DrawDiamonds = [&](const AnimTrack& track, ImU32 color) {
             if (!track.isAnimated) return;
             for (const auto& k : track.keys) {
-                float kx = p.x + (clips[i].timelineStart + k.time * (clips[i].timelineEnd - clips[i].timelineStart)) * trackWidth;
+                float kx = p.x + headerW + (clips[i].timelineStart + k.time * (clips[i].timelineEnd - clips[i].timelineStart)) * trackWidth;
                 float ky = dY2 - 8.0f * clips[i].visualScale; 
                 float s = 4.0f * clips[i].visualScale;
                 ImVec2 p1(kx, ky - s), p2(kx + s, ky), p3(kx, ky + s), p4(kx - s, ky);
@@ -408,25 +419,29 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         }
     }
 
-    float playheadX = p.x + (progress * trackWidth);
-    draw_list->AddLine(ImVec2(playheadX, p.y - 10), ImVec2(playheadX, p.y + totalTimelineHeight + 10), IM_COL32(255, 50, 50, 255), 2.0f);
+    // 4. Отрисовка Playhead (Красная линия)
+    float playheadX = p.x + headerW + (progress * trackWidth);
+    float playheadHeight = std::max(totalTimelineHeight, ImGui::GetWindowHeight());
+    draw_list->AddLine(ImVec2(playheadX, p.y - 10), ImVec2(playheadX, p.y + playheadHeight), IM_COL32(255, 50, 50, 255), 2.0f);
     draw_list->AddTriangleFilled(ImVec2(playheadX - 6, p.y - 10), ImVec2(playheadX + 6, p.y - 10), ImVec2(playheadX, p.y), IM_COL32(255, 50, 50, 255));
 
-    ImGui::SetCursorScreenPos(ImVec2(p.x, p.y));
-    ImGui::InvisibleButton("##TrackArea", ImVec2(trackWidth, totalTimelineHeight));
+    // 5. Обработка клика по таймлайну
+    ImGui::SetCursorScreenPos(ImVec2(p.x + headerW, p.y));
+    ImGui::InvisibleButton("##TrackArea", ImVec2(trackWidth, playheadHeight));
     if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
-        progress = (ImGui::GetMousePos().x - p.x) / trackWidth;
+        progress = (ImGui::GetMousePos().x - (p.x + headerW)) / trackWidth;
         if (progress < 0.0f) progress = 0.0f;
         if (progress > 1.0f) progress = 1.0f;
         doSeek = true;
     }
 
+    // 6. Обработка Drag & Drop (Перетаскивание файлов)
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PROJECT_FILE")) {
             int fileIndex = *(const int*)payload->Data;
             std::string filepath = projectFiles[fileIndex];
             
-            float mouseX = ImGui::GetMousePos().x - p.x;
+            float mouseX = ImGui::GetMousePos().x - (p.x + headerW);
             float dropTime = mouseX / trackWidth;
             if (dropTime < 0) dropTime = 0; if (dropTime > 1) dropTime = 1;
             float end = dropTime + 0.15f; if (end > 1.0f) end = 1.0f;
@@ -442,7 +457,9 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         ImGui::EndDragDropTarget();
     }
 
-    ImGui::End(); 
+    ImGui::EndChild(); // Конец скроллируемой зоны
+    ImGui::End(); // Конец Timeline
+    
     return selectedFile;
 }
 

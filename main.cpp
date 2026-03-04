@@ -5,6 +5,7 @@
  * - Real FFmpeg CLI Export Pipeline (Captures C++ Render Target)
  * - Dynamic Track Management (+ Add Track sync)
  * - Start Screen / Project Management integration
+ * - FIXED: Out of bounds assertion when adding tracks (Sync moved after UI)
  * ========================================================================= */
 
 #include <iostream>
@@ -66,7 +67,7 @@ int main(int argc, char* argv[]) {
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
     int lastMouseX = 0, lastMouseY = 0;
 
-    // 4. EXPORT VARIABLES (НОВЫЕ ПЕРЕМЕННЫЕ)
+    // 4. EXPORT VARIABLES 
     bool isExporting = false;
     int exportFrameCurrent = 0;
     int exportFrameTotal = 0;
@@ -84,7 +85,7 @@ int main(int argc, char* argv[]) {
 
         // --- EVENT HANDLING ---
         while (SDL_PollEvent(&event)) {
-            ui.ProcessEvent(&event); // Always send events to UI first
+            ui.ProcessEvent(&event); 
             if (event.type == SDL_QUIT) isRunning = false;
             
             if (event.type == SDL_DROPFILE) {
@@ -110,11 +111,8 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // =========================================================================
-        // STATE 1: START SCREEN (No project loaded)
-        // =========================================================================
         if (!isProjectOpen) {
-            SDL_SetRenderDrawColor(renderer, 25, 25, 30, 255); // Dark background
+            SDL_SetRenderDrawColor(renderer, 25, 25, 30, 255); 
             SDL_RenderClear(renderer);
 
             ImGui_ImplSDLRenderer2_NewFrame();
@@ -137,22 +135,11 @@ int main(int argc, char* argv[]) {
             ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
             SDL_RenderPresent(renderer);
         } 
-        
-        // =========================================================================
-        // STATE 2: MAIN EDITOR (Project is loaded)
-        // =========================================================================
         else {
-            // --- СИНХРОНИЗАЦИЯ НОВЫХ ДОРОЖЕК ИЗ UI ---
-            while (players.size() < currentProject.tracks.size()) {
-                players.push_back(new VideoPlayer());
-                lastActiveClipPerTrack.push_back(-1);
-            }
-
             int leftPanelW = 220;
             int rightPanelW = 300;
             int viewW = WINDOW_VIEW_W - leftPanelW - rightPanelW;
             
-            // --- УПРАВЛЕНИЕ ЭКСПОРТОМ (MAGIC HAPPENS HERE) ---
             double maxDurationSec = 1.0;
             for (auto p : players) {
                 if (p->isLoaded && p->GetDurationSeconds() > maxDurationSec) maxDurationSec = p->GetDurationSeconds();
@@ -191,7 +178,6 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-            // --- ОБЫЧНАЯ ЛОГИКА (Если не экспортируем) ---
             bool doSeek = false;
             bool doAddText = false; 
             bool effectChanged = false; 
@@ -228,19 +214,24 @@ int main(int argc, char* argv[]) {
                     if (currentProgress >= 1.0f) { currentProgress = 1.0f; isPlaying = false; }
                 }
             } else {
-                // Если мы ЭКСПОРТИРУЕМ, жестко двигаем ползунок покадрово
                 currentProgress = (float)exportFrameCurrent / exportFrameTotal;
                 doSeek = true; 
             }
 
-            // --- UI RENDERING ---
-            // --- UI RENDERING ---
+            // --- 1. UI RENDERING ---
             std::string newFile = ui.Render(WINDOW_VIEW_W, WINDOW_VIEW_H, EXTRA_UI_HEIGHT, 
                                             currentProgress, isPlaying, doSeek, 
                                             currentProject.clips, selectedClipIndex, 
                                             showExportMenu, currentProject.tracks, 
                                             doAddText, effectChanged, currentProject.mediaFiles);
                                             
+            // --- 2. СИНХРОНИЗАЦИЯ НОВЫХ ДОРОЖЕК ИЗ UI (ПЕРЕНЕСЕНО СЮДА) ---
+            // Теперь, если UI добавил трек, мы сразу создаем под него плеер ДО отрисовки видео!
+            while (players.size() < currentProject.tracks.size()) {
+                players.push_back(new VideoPlayer());
+                lastActiveClipPerTrack.push_back(-1);
+            }
+
             // --- ОБРАБОТКА КНОПОК СОХРАНЕНИЯ ИЗ UI ---
             if (ui.triggerSave) {
                 ui.triggerSave = false;
@@ -254,6 +245,7 @@ int main(int argc, char* argv[]) {
                                                
             if (!newFile.empty()) {
                 if (std::find(currentProject.mediaFiles.begin(), currentProject.mediaFiles.end(), newFile) == currentProject.mediaFiles.end()) {
+                    currentProject.mediaFiles.push_back(newFile);
                 }
             }
 
@@ -266,7 +258,7 @@ int main(int argc, char* argv[]) {
                 selectedClipIndex = currentProject.clips.size() - 1;
             }
 
-            // --- VIDEO RENDERING ---
+            // --- 3. VIDEO RENDERING ---
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
             
@@ -306,7 +298,6 @@ int main(int argc, char* argv[]) {
                             }
                         }
 
-                        // Отключаем звук во время экспорта
                         players[t]->isPlaying = isExporting ? false : isPlaying; 
                         players[t]->currentVolume = activeClip.volume;
                         
@@ -328,21 +319,15 @@ int main(int argc, char* argv[]) {
                 lastActiveClipPerTrack[t] = activeClipIndex;
             }
 
-            // --- ЗАХВАТ КАДРА ДЛЯ ЭКСПОРТА ---
             if (isExporting && ffmpegPipe) {
-                // 1. Читаем пиксели только из зоны превью видео
                 SDL_Rect exportRect = { leftPanelW, 0, viewW, WINDOW_VIEW_H };
                 SDL_RenderReadPixels(renderer, &exportRect, SDL_PIXELFORMAT_ARGB8888, exportPixelBuffer.data(), viewW * 4);
                 
-                // 2. Отправляем в FFmpeg
                 fwrite(exportPixelBuffer.data(), 1, exportPixelBuffer.size(), ffmpegPipe);
-                
                 exportFrameCurrent++;
                 
-                // 3. Рисуем UI ПОВЕРХ, чтобы пользователь видел прогресс
                 ui.DrawSurface(renderer);
                 
-                // Прогресс-бар загрузки
                 SDL_SetRenderDrawColor(renderer, 50, 200, 50, 255);
                 SDL_Rect progressRect = { 0, WINDOW_VIEW_H + EXTRA_UI_HEIGHT - 10, (int)((float)exportFrameCurrent / exportFrameTotal * WINDOW_VIEW_W), 10 };
                 SDL_RenderFillRect(renderer, &progressRect);
@@ -355,7 +340,7 @@ int main(int argc, char* argv[]) {
                     pclose(ffmpegPipe);
                     #endif
                     ffmpegPipe = nullptr;
-                    currentProgress = 0.0f; // Возвращаем в начало
+                    currentProgress = 0.0f; 
                 }
             } else {
                 exportMenu.Draw(&showExportMenu);
@@ -366,7 +351,6 @@ int main(int argc, char* argv[]) {
         }
     } 
 
-    // --- CLEANUP ---
     ui.Shutdown();
     for(auto p : players) delete p;
     SDL_DestroyRenderer(renderer);
