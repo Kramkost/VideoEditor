@@ -34,10 +34,10 @@ Created by **Kramkost**.
 
 ## 📸 Gallery
 
-![Editor Interface Placeholder][images/main_ui.png]
+![Main Interface](images/main_ui.png)
 > *Titan's primary editing interface, showcasing the infinite timeline and hardware-accelerated preview window.*
 
-![Animation Curves Placeholder][images/curves.png]
+![Animation Curves](images/curves.png)
 > *Fine-tuning Bezier curves for smooth, professional keyframe animations.*
 
 ---
