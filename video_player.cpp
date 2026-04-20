@@ -214,14 +214,13 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
         // 1. Берем чистую копию кадра
         memcpy(pFrameEffects->data[0], pFrameBGR->data[0], pFrameBGR->linesize[0] * frameH);
         
-        // 2. Накладываем все эффекты через наш PluginManager!
-        PluginManager::ApplyPlugins(pFrameEffects->data[0], frameW, frameH, pFrameEffects->linesize[0], effects);
+        // 2. Накладываем все эффекты через наш PluginManager (С ПЕРЕДАЧЕЙ currentSec)
+        PluginManager::ApplyPlugins(pFrameEffects->data[0], frameW, frameH, pFrameEffects->linesize[0], effects, (float)currentSec);
         
         // 3. Отправляем на видеокарту
         SDL_UpdateTexture(texture, nullptr, pFrameEffects->data[0], pFrameEffects->linesize[0]);
         textureNeedsUpdate = false; 
     }
-
     // ОТРИСОВКА НА ЭКРАН
     if (drawVideo && videoStreamIndex != -1 && texture) {
         float scaleW = (float)viewW / frameW;

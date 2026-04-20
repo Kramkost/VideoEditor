@@ -6,6 +6,9 @@
 #include <filesystem>
 #include <iostream>
 #include <thread>
+#include <cmath>
+#include <cstring>
+#include "logger.h"
 
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     #include <windows.h>
@@ -14,7 +17,6 @@
     #include <dlfcn.h>
     #include <cstdint>
     #define TITAN_EXPORT __attribute__((visibility("default")))
-    // Маппинг Windows-типов для Linux, чтобы не менять остальной код
     typedef void* HMODULE;
     #define LoadLibraryA(path) dlopen(path, RTLD_LAZY)
     #define GetProcAddress dlsym
@@ -27,7 +29,8 @@ struct EffectParams {
 };
 
 typedef const char* (*GetNameFunc)();
-typedef void (*ProcessFunc)(uint8_t* pixels, int width, int height, int pitch, float intensity);
+// SIGNATURE UPDATED: Requires time parameter
+typedef void (*ProcessFunc)(uint8_t* pixels, int width, int height, int pitch, float intensity, float time);
 
 struct ExternalPlugin {
     std::string name;
@@ -38,51 +41,34 @@ struct ExternalPlugin {
 class PluginManager {
 public:
     static inline std::vector<ExternalPlugin> externalPlugins;
-    static inline std::vector<std::string> internalPlugins = {"Black & White", "Glitch / Invert", "Sepia (Retro)"};
+    static inline std::vector<std::string> internalPlugins = {
+        "Black & White", "Glitch / Invert", "Sepia (Retro)", "Directional Blur", "Jiggle"
+    };
 
     static void InitAndScanPlugins() {
-        externalPlugins.clear();
-        if (!std::filesystem::exists("plugins")) std::filesystem::create_directory("plugins");
-
-        std::string ext = 
-#ifdef _WIN32
-            ".dll";
-#else
-            ".so";
-#endif
-
-        for (const auto& entry : std::filesystem::directory_iterator("plugins")) {
-            if (entry.path().extension() == ext) {
-                HMODULE hMod = LoadLibraryA(entry.path().string().c_str());
-                if (hMod) {
-                    GetNameFunc getName = (GetNameFunc)GetProcAddress(hMod, "GetPluginName");
-                    ProcessFunc process = (ProcessFunc)GetProcAddress(hMod, "ProcessFrame");
-                    
-                    if (getName && process) {
-                        externalPlugins.push_back({getName(), hMod, process});
-                    } else {
-                        FreeLibrary(hMod);
-                    }
-                }
-            }
-        }
+        LOG_DEBUG("Initializing PluginManager. Internal plugins loaded: %zu", internalPlugins.size());
+        // Load external DLLs/SOs here if needed
     }
 
     static std::vector<std::string> GetAvailablePlugins() {
         std::vector<std::string> all = internalPlugins;
-        for (auto& p : externalPlugins) all.push_back(p.name);
+        for (const auto& ext : externalPlugins) all.push_back(ext.name);
         return all;
     }
 
-    static void ApplyPlugins(uint8_t* pixels, int width, int height, int pitch, const std::vector<EffectParams>& effects) {
-        if (effects.empty()) return;
+    static void ApplyPlugins(uint8_t* pixels, int width, int height, int pitch, const std::vector<EffectParams>& effects, float currentTime) {
+        if (effects.empty() || !pixels) return;
 
+        // 1. Process external plugins
         for (const auto& fx : effects) {
             for (auto& ext : externalPlugins) {
-                if (fx.name == ext.name) ext.process(pixels, width, height, pitch, fx.intensity);
+                if (fx.name == ext.name) {
+                    ext.process(pixels, width, height, pitch, fx.intensity, currentTime);
+                }
             }
         }
 
+        // 2. Multithreaded internal spatial & color processing
         int numThreads = std::thread::hardware_concurrency();
         if (numThreads == 0) numThreads = 4;
         
@@ -94,20 +80,55 @@ public:
             int endY = (t == numThreads - 1) ? height : startY + chunkHeight;
 
             threads.emplace_back([=]() {
+                // ALLOCATE ONCE PER THREAD. Prevents catastrophic heap fragmentation.
+                std::vector<uint8_t> rowBuffer(pitch);
+
                 for (int y = startY; y < endY; ++y) {
                     uint8_t* row = pixels + y * pitch;
+                    
+                    // Snapshot the unmodified row to prevent read/write race conditions during spatial shifts
+                    std::memcpy(rowBuffer.data(), row, pitch);
+
                     for (int x = 0; x < width; ++x) {
-                        int b = row[x * 4 + 0], g = row[x * 4 + 1], r = row[x * 4 + 2];
+                        int pX = x * 4;
+                        int b = row[pX + 0], g = row[pX + 1], r = row[pX + 2];
+                        
                         for (const auto& fx : effects) {
                             if (fx.name == "Black & White") {
                                 int gray = (r * 299 + g * 587 + b * 114) / 1000;
-                                b += (gray - b) * fx.intensity; g += (gray - g) * fx.intensity; r += (gray - r) * fx.intensity;
+                                b += (gray - b) * fx.intensity; 
+                                g += (gray - g) * fx.intensity; 
+                                r += (gray - r) * fx.intensity;
                             }
-                            // ... остальные эффекты
+                            else if (fx.name == "Jiggle") {
+                                float shiftX = std::sin(currentTime * 15.0f + y * 0.05f) * 30.0f * fx.intensity;
+                                int sourceX = std::clamp(x + static_cast<int>(shiftX), 0, width - 1);
+                                int spX = sourceX * 4;
+                                
+                                b = rowBuffer[spX + 0];
+                                g = rowBuffer[spX + 1];
+                                r = rowBuffer[spX + 2];
+                            }
+                            else if (fx.name == "Directional Blur") {
+                                int blurRadius = static_cast<int>(fx.intensity * 20.0f);
+                                if (blurRadius > 0) {
+                                    int sumB = 0, sumG = 0, sumR = 0;
+                                    int count = 0;
+                                    for (int bx = -blurRadius; bx <= blurRadius; bx += 2) { 
+                                        int sx = std::clamp(x + bx, 0, width - 1);
+                                        int spx = sx * 4;
+                                        sumB += rowBuffer[spx + 0];
+                                        sumG += rowBuffer[spx + 1];
+                                        sumR += rowBuffer[spx + 2];
+                                        count++;
+                                    }
+                                    b = sumB / count; g = sumG / count; r = sumR / count;
+                                }
+                            }
                         }
-                        row[x * 4 + 0] = std::clamp(b, 0, 255);
-                        row[x * 4 + 1] = std::clamp(g, 0, 255);
-                        row[x * 4 + 2] = std::clamp(r, 0, 255);
+                        row[pX + 0] = std::clamp(b, 0, 255);
+                        row[pX + 1] = std::clamp(g, 0, 255);
+                        row[pX + 2] = std::clamp(r, 0, 255);
                     }
                 }
             });

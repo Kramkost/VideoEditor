@@ -5,7 +5,7 @@ class ExportUI {
 public:
     void Draw(bool* showMenu); 
     
-    // ФИКС: Убрали "C:\\", так как в корень диска C часто нельзя писать без прав админа
+    // Fixed
     std::string outputPath = "output.mp4"; 
     int width = 1280;
     int height = 720;

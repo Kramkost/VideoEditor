@@ -6,28 +6,16 @@
 #include <algorithm>
 #include "plugins.h"
 
-enum TrackType {
-    TRACK_VIDEO,
-    TRACK_AUDIO
-};
+enum TrackType { TRACK_VIDEO, TRACK_AUDIO };
 
 struct TimelineTrack {
     std::string name;
     TrackType type;
 };
 
-// ТИПЫ КРИВЫХ АНИМАЦИИ (BEZIER)
-enum EasingType {
-    EASE_LINEAR,     
-    EASE_SMOOTH,     
-    EASE_IN,         
-    EASE_OUT         
-};
+enum EasingType { EASE_LINEAR, EASE_SMOOTH, EASE_IN, EASE_OUT };
 
-struct Keyframe {
-    float time;  
-    float value; 
-};
+struct Keyframe { float time; float value; };
 
 struct AnimTrack {
     bool isAnimated = false;
@@ -51,7 +39,6 @@ struct AnimTrack {
         for (size_t i = 0; i < keys.size() - 1; ++i) {
             if (time >= keys[i].time && time <= keys[i+1].time) {
                 float t = (time - keys[i].time) / (keys[i+1].time - keys[i].time);
-                
                 float smoothT = t;
                 switch (easing) {
                     case EASE_LINEAR: smoothT = t; break;
@@ -59,7 +46,6 @@ struct AnimTrack {
                     case EASE_IN:     smoothT = t * t * t; break;
                     case EASE_OUT:    smoothT = 1.0f - std::pow(1.0f - t, 3.0f); break;
                 }
-                
                 return keys[i].value + (keys[i+1].value - keys[i].value) * smoothT;
             }
         }
@@ -69,12 +55,9 @@ struct AnimTrack {
 
 struct VideoClip {
     std::string filepath;
-    float timelineStart; 
-    float timelineEnd;   
-    float mediaStart;    
-    float mediaEnd;      
-    float volume;    
-    int trackIndex; 
+    float timelineStart; float timelineEnd;   
+    float mediaStart; float mediaEnd;      
+    float volume; int trackIndex; 
     
     float posX; float posY; float scale; float rotation; 
     AnimTrack animX, animY, animScale, animRot;
@@ -83,7 +66,6 @@ struct VideoClip {
     std::string textContent;
     std::vector<EffectParams> effects;
 
-    // Для плавной анимации интерфейса (Hover/Click)
     float visualScale; 
     bool isInteracting;
 
@@ -95,6 +77,9 @@ struct VideoClip {
 
 class UIManager {
 public:
+    enum WorkspaceMode { WORKSPACE_EDITING, WORKSPACE_EFFECTS };
+    WorkspaceMode currentWorkspace = WORKSPACE_EDITING;
+
     void Init(SDL_Window* window, SDL_Renderer* renderer);
     void ProcessEvent(const SDL_Event* event);
     
@@ -107,13 +92,14 @@ public:
                        
     void DrawSurface(SDL_Renderer* renderer);
     void Shutdown();
-    
-    // --- НОВЫЕ ФЛАГИ ДЛЯ СОХРАНЕНИЯ ---
+
+    void SaveEffectPreset(const std::string& name, const std::vector<EffectParams>& effects);
+    void LoadEffectPreset(const std::string& name, std::vector<EffectParams>& outEffects);
+
     bool triggerSave = false;
     bool triggerSaveAs = false;
     
 private:
     std::string OpenFileDialog();
-    
     bool showSettings = false; 
 };

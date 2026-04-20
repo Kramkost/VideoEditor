@@ -25,7 +25,7 @@ std::string ExportUI::SaveFileDialog() {
     }
     return "";
 #else
-    // --- УНИВЕРСАЛЬНЫЙ LINUX-КОСТЫЛЬ ---
+    // --- Universal Linux uploader---
     
     // Попытка 1: Вызываем системное графическое окно Linux (Zenity)
     FILE* pipe = popen("zenity --file-selection --save --title=\"Save Rendered Video\" --confirm-overwrite 2>/dev/null", "r");
@@ -92,7 +92,7 @@ void ExportUI::Draw(bool* showMenu) {
     ImGui::Separator();
     ImGui::Spacing();
     
-    // --- АНИМАЦИЯ КНОПКИ РЕНДЕРА ---
+    // --- Animations of button renders ---
     float time = ImGui::GetTime();
     float pulse = (std::sin(time * 5.0f) + 1.0f) * 0.5f; 
     ImVec4 btnColor = ImVec4(0.1f + 0.2f * pulse, 0.6f + 0.2f * pulse, 0.2f, 1.0f); // Пульсирующий зеленый
@@ -101,8 +101,8 @@ void ExportUI::Draw(bool* showMenu) {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
     
     if (ImGui::Button("START EXPORT", ImVec2(-1, 40))) {
-        startRender = true; // Сигнал для main.cpp
-        *showMenu = false;  // Закрываем окно настроек
+        startRender = true; //  main.cpp
+        *showMenu = false; 
     }
     ImGui::PopStyleColor(2);
 
