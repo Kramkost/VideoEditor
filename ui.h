@@ -5,6 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include "plugins.h"
+#include "math_utils.h"
 
 enum TrackType { TRACK_VIDEO, TRACK_AUDIO };
 
@@ -53,7 +54,15 @@ struct AnimTrack {
     }
 };
 
+static inline uint32_t G_NextClipId = 1;
+
 struct VideoClip {
+    uint32_t id;
+    uint32_t parentId;
+    bool isNullObject;
+    TransformMatrix globalTransform;
+    bool transformCalculatedThisFrame;
+
     std::string filepath;
     float timelineStart; float timelineEnd;   
     float mediaStart; float mediaEnd;      
@@ -69,10 +78,15 @@ struct VideoClip {
     float visualScale; 
     bool isInteracting;
 
-    VideoClip(std::string path, float tStart, float tEnd, int track, bool text = false, std::string tContent = "") 
+    VideoClip(std::string path, float tStart, float tEnd, int track, bool text = false, std::string tContent = "", uint32_t forceId = 0, uint32_t pId = 0, bool isNull = false) 
         : filepath(path), timelineStart(tStart), timelineEnd(tEnd), mediaStart(0.0f), mediaEnd(1.0f), 
           volume(1.0f), trackIndex(track), posX(0.0f), posY(0.0f), scale(1.0f), rotation(0.0f), 
-          isText(text), textContent(tContent), visualScale(1.0f), isInteracting(false) {}
+          isText(text), textContent(tContent), visualScale(1.0f), isInteracting(false), 
+          parentId(pId), isNullObject(isNull), transformCalculatedThisFrame(false) 
+    {
+        id = (forceId == 0) ? G_NextClipId++ : forceId;
+        if (id >= G_NextClipId) G_NextClipId = id + 1; // Синхронизация счетчика при загрузке сохранения
+    }
 };
 
 class UIManager {

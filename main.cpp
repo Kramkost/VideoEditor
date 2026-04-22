@@ -16,6 +16,7 @@
 #include "ui.h"
 #include "video_player.h"
 #include "logger.h"
+#include "math_utils.h"
 
 #define AUTOSAVE_INTERVAL_SEC 60.0f
 
@@ -73,11 +74,7 @@ int main(int argc, char* argv[]) {
         float dt = static_cast<float>(currentTime - lastTime) / static_cast<float>(perfFrequency);
         lastTime = currentTime;
 
-        // CRITICAL FIX: Clamp dt to prevent massive desyncs if the OS stalls the thread
-        if (dt > 0.1f) {
-            LOG_ERROR("Lag spike (dt = %f). Clamping to 0.1s to save timeline state.", dt);
-            dt = 0.1f;
-        }
+        if (dt > 0.1f) dt = 0.1f;
 
         while (SDL_PollEvent(&event)) {
             ui.ProcessEvent(&event); 
@@ -104,18 +101,12 @@ int main(int argc, char* argv[]) {
                     if (currentProject.saveFilepath.empty()) ProjectManager::SaveProjectAs(currentProject);
                     else ProjectManager::SaveProject(currentProject);
                 }
-                if (event.key.keysym.sym == SDLK_F12) {
-                    LOG_ERROR("[OOM] Inducing memory leak per user request...");
-                    std::vector<void*> blackhole;
-                }
             }
         }
 
-        // AUTO-SAVE LOGIC
         if (isProjectOpen && !isExporting) {
             autoSaveTimer += dt;
             if (autoSaveTimer >= AUTOSAVE_INTERVAL_SEC) {
-                LOG_DEBUG("Executing background Auto-Save...");
                 std::string originalPath = currentProject.saveFilepath;
                 currentProject.saveFilepath = autoSavePath;
                 ProjectManager::SaveProject(currentProject);
@@ -157,9 +148,7 @@ int main(int argc, char* argv[]) {
             
             if (exportMenu.startRender) {
                 exportMenu.startRender = false;
-                isExporting = true;
-                isPlaying = false;
-                exportFrameCurrent = 0;
+                isExporting = true; isPlaying = false; exportFrameCurrent = 0;
                 
                 float maxTimelineEnd = 0.0f;
                 for (const auto& clip : currentProject.clips) {
@@ -170,7 +159,6 @@ int main(int argc, char* argv[]) {
                 
                 if (isExporting) {
                     exportPixelBuffer.resize(viewW * WINDOW_VIEW_H * 4); 
-                    
                     std::string cmd = "ffmpeg -y -f rawvideo -pix_fmt bgra -s " + std::to_string(viewW) + "x" + std::to_string(WINDOW_VIEW_H) + 
                                       " -r " + std::to_string(exportMenu.fps) + " -i - -vf scale=" + std::to_string(exportMenu.width) + ":" + std::to_string(exportMenu.height) + 
                                       " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p \"" + exportMenu.outputPath + "\"";
@@ -180,17 +168,11 @@ int main(int argc, char* argv[]) {
                     #else
                     ffmpegPipe = popen(cmd.c_str(), "w");
                     #endif
-                    
-                    if (!ffmpegPipe) {
-                        LOG_ERROR("FAILED TO START FFMPEG EXPORT PIPELINE!");
-                        isExporting = false;
-                    }
+                    if (!ffmpegPipe) isExporting = false;
                 }
             }
 
-            bool doSeek = false;
-            bool doAddText = false; 
-            bool effectChanged = false; 
+            bool doSeek = false; bool doAddText = false; bool effectChanged = false; 
             
             if (!isExporting) {
                 int mouseX, mouseY;
@@ -239,15 +221,8 @@ int main(int argc, char* argv[]) {
                 lastActiveClipPerTrack.push_back(-1);
             }
 
-            if (ui.triggerSave) {
-                ui.triggerSave = false;
-                if (currentProject.saveFilepath.empty()) ProjectManager::SaveProjectAs(currentProject);
-                else ProjectManager::SaveProject(currentProject);
-            }
-            if (ui.triggerSaveAs) {
-                ui.triggerSaveAs = false;
-                ProjectManager::SaveProjectAs(currentProject);
-            }
+            if (ui.triggerSave) { ui.triggerSave = false; if (currentProject.saveFilepath.empty()) ProjectManager::SaveProjectAs(currentProject); else ProjectManager::SaveProject(currentProject); }
+            if (ui.triggerSaveAs) { ui.triggerSaveAs = false; ProjectManager::SaveProjectAs(currentProject); }
                                                
             if (!newFile.empty()) {
                 if (std::find(currentProject.mediaFiles.begin(), currentProject.mediaFiles.end(), newFile) == currentProject.mediaFiles.end()) {
@@ -256,11 +231,49 @@ int main(int argc, char* argv[]) {
             }
 
             if (doAddText) {
-                float start = currentProgress;
-                float end = std::clamp(start + 0.15f, 0.0f, 1.0f); 
+                float start = currentProgress; float end = std::clamp(start + 0.15f, 0.0f, 1.0f); 
                 if (currentProject.clips.empty()) { start = 0.0f; end = 1.0f; }
                 currentProject.clips.push_back(VideoClip("", start, end, 1, true, "YOUR TEXT HERE"));
                 selectedClipIndex = currentProject.clips.size() - 1;
+            }
+
+            // --- БАЗА ИЕРАРХИИ: СБРОС И ПРОСЧЕТ МАТРИЦ ---
+            for (auto& clip : currentProject.clips) clip.transformCalculatedThisFrame = false;
+
+            auto ComputeGlobalTransform = [&](uint32_t clipId, auto& ComputeRef, int depth = 0) -> TransformMatrix {
+                if (depth > 100) { LOG_ERROR("Infinite recursion detected in parenting!"); return TransformMatrix(); }
+                auto it = std::find_if(currentProject.clips.begin(), currentProject.clips.end(), [clipId](const VideoClip& c) { return c.id == clipId; });
+                if (it == currentProject.clips.end()) return TransformMatrix();
+
+                VideoClip& clip = *it;
+                if (clip.transformCalculatedThisFrame) return clip.globalTransform;
+
+                float len = clip.timelineEnd - clip.timelineStart;
+                float localProg = (len > 0.001f) ? (currentProgress - clip.timelineStart) / len : 0.0f;
+                localProg = std::clamp(localProg, 0.0f, 1.0f);
+
+                float lx = clip.animX.GetValue(localProg, clip.posX);
+                float ly = clip.animY.GetValue(localProg, clip.posY);
+                float lRot = clip.animRot.GetValue(localProg, clip.rotation);
+                float lScale = clip.animScale.GetValue(localProg, clip.scale);
+
+                TransformMatrix localMat = TransformMatrix::CreateTRS(lx, ly, lRot, lScale);
+
+                if (clip.parentId != 0) {
+                    TransformMatrix parentGlobal = ComputeRef(clip.parentId, ComputeRef, depth + 1);
+                    clip.globalTransform = parentGlobal * localMat; 
+                } else {
+                    clip.globalTransform = localMat;
+                }
+
+                clip.transformCalculatedThisFrame = true;
+                return clip.globalTransform;
+            };
+
+            for (auto& clip : currentProject.clips) {
+                if (currentProgress >= clip.timelineStart && currentProgress < clip.timelineEnd) {
+                    ComputeGlobalTransform(clip.id, ComputeGlobalTransform, 0);
+                }
             }
 
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -270,22 +283,38 @@ int main(int argc, char* argv[]) {
                 int activeClipIndex = -1;
                 for (int i = 0; i < currentProject.clips.size(); ++i) {
                     if (currentProject.clips[i].trackIndex == t && currentProgress >= currentProject.clips[i].timelineStart && currentProgress < currentProject.clips[i].timelineEnd) {
-                        activeClipIndex = i;
-                        break;
+                        activeClipIndex = i; break;
                     }
                 }
 
                 if (activeClipIndex != -1) {
                     VideoClip& activeClip = currentProject.clips[activeClipIndex];
                     
-                    if (activeClip.isText) {
+                    // ДЕКОМПОЗИЦИЯ ФИНАЛЬНЫХ ЗНАЧЕНИЙ (Магия Матриц)
+                    float finalX, finalY, finalRot, finalScale;
+                    activeClip.globalTransform.Decompose(finalX, finalY, finalRot, finalScale);
+
+                    if (activeClip.isNullObject) {
+                        players[t]->isPlaying = false;
+                        if (lastActiveClipPerTrack[t] != -1) players[t]->ClearAudio();
+                    }
+                    else if (activeClip.isText) {
                         players[t]->isPlaying = false;
                         if (lastActiveClipPerTrack[t] != -1) players[t]->ClearAudio(); 
+                        
+                        // РЕНДЕР ТЕКСТА (ПЕРЕНЕСЕНО СЮДА)
+                        // В ImGui нельзя крутить текст, поэтому пока просто двигаем и скейлим
+                        float fontSize = 64.0f * finalScale; 
+                        ImVec2 textSize = ImGui::CalcTextSize(activeClip.textContent.c_str());
+                        float screenX = leftPanelW + (viewW) / 2.0f + finalX - (textSize.x * finalScale) / 2.0f;
+                        float screenY = WINDOW_VIEW_H / 2.0f + finalY - (textSize.y * finalScale) / 2.0f;
+                        
+                        ImDrawList* bg_draw_list = ImGui::GetBackgroundDrawList();
+                        bg_draw_list->AddText(ImGui::GetFont(), fontSize, ImVec2(screenX + 2, screenY + 2), IM_COL32(0,0,0,255), activeClip.textContent.c_str());
+                        bg_draw_list->AddText(ImGui::GetFont(), fontSize, ImVec2(screenX, screenY), IM_COL32(255,255,255,255), activeClip.textContent.c_str());
                     } 
                     else {
-                        if (players[t]->loadedFilepath != activeClip.filepath) {
-                            players[t]->LoadVideo(activeClip.filepath, renderer);
-                        }
+                        if (players[t]->loadedFilepath != activeClip.filepath) players[t]->LoadVideo(activeClip.filepath, renderer);
                         if (effectChanged) players[t]->textureNeedsUpdate = true;
 
                         float len = activeClip.timelineEnd - activeClip.timelineStart;
@@ -294,24 +323,18 @@ int main(int argc, char* argv[]) {
                         float mediaProgress = activeClip.mediaStart + localProg * (activeClip.mediaEnd - activeClip.mediaStart);
                         double targetTimeSec = mediaProgress * players[t]->GetDurationSeconds();
 
-                        if (doSeek) {
-                            players[t]->Seek(mediaProgress);
-                        } else if (activeClipIndex != lastActiveClipPerTrack[t]) {
+                        if (doSeek) players[t]->Seek(mediaProgress);
+                        else if (activeClipIndex != lastActiveClipPerTrack[t]) {
                             if (std::abs(targetTimeSec - players[t]->GetCurrentSec()) > 0.1) players[t]->Seek(mediaProgress);
                         }
 
                         players[t]->isPlaying = isExporting ? false : isPlaying; 
                         players[t]->currentVolume = activeClip.volume;
-                        
                         bool isVideoTrack = (currentProject.tracks[t].type == TRACK_VIDEO);
 
-                        float currentPosX = activeClip.animX.GetValue(localProg, activeClip.posX);
-                        float currentPosY = activeClip.animY.GetValue(localProg, activeClip.posY);
-                        float currentScale = activeClip.animScale.GetValue(localProg, activeClip.scale);
-                        float currentRot = activeClip.animRot.GetValue(localProg, activeClip.rotation);
-
+                        // ОТПРАВЛЯЕМ ГЛОБАЛЬНЫЕ КООРДИНАТЫ В ПЛЕЕР
                         players[t]->UpdateAndDraw(renderer, leftPanelW, 0, viewW, WINDOW_VIEW_H, targetTimeSec, isVideoTrack, 
-                                                  currentPosX, currentPosY, currentScale, currentRot, activeClip.effects); 
+                                                  finalX, finalY, finalScale, finalRot, activeClip.effects); 
                     }
                 } 
                 else {
@@ -324,12 +347,10 @@ int main(int argc, char* argv[]) {
             if (isExporting && ffmpegPipe) {
                 SDL_Rect exportRect = { leftPanelW, 0, viewW, WINDOW_VIEW_H };
                 SDL_RenderReadPixels(renderer, &exportRect, SDL_PIXELFORMAT_ARGB8888, exportPixelBuffer.data(), viewW * 4);
-                
                 fwrite(exportPixelBuffer.data(), 1, exportPixelBuffer.size(), ffmpegPipe);
                 exportFrameCurrent++;
                 
                 ui.DrawSurface(renderer);
-                
                 SDL_SetRenderDrawColor(renderer, 50, 200, 50, 255);
                 SDL_Rect progressRect = { 0, WINDOW_VIEW_H + EXTRA_UI_HEIGHT - 10, static_cast<int>(static_cast<float>(exportFrameCurrent) / exportFrameTotal * WINDOW_VIEW_W), 10 };
                 SDL_RenderFillRect(renderer, &progressRect);
@@ -341,21 +362,17 @@ int main(int argc, char* argv[]) {
                     #else
                        pclose(ffmpegPipe);
                     #endif
-                    ffmpegPipe = nullptr;
-                    currentProgress = 0.0f; 
-                    LOG_DEBUG("Export complete.");
+                    ffmpegPipe = nullptr; currentProgress = 0.0f; 
                 }
             } else {
                 exportMenu.Draw(&showExportMenu);
                 ui.DrawSurface(renderer); 
             }
-            
             SDL_RenderPresent(renderer);
         }
     } 
 
     if (isExporting && ffmpegPipe){
-        LOG_ERROR("Application closed during export. Closing FFmpeg pipe.");
         #ifdef _WIN32
            _pclose(ffmpegPipe);
         #else
@@ -364,10 +381,6 @@ int main(int argc, char* argv[]) {
         ffmpegPipe = nullptr;
     }
 
-    ui.Shutdown();
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-
+    ui.Shutdown(); SDL_DestroyRenderer(renderer); SDL_DestroyWindow(window); SDL_Quit();
     return 0;
 }
