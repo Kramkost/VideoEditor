@@ -102,12 +102,21 @@ public:
                             }
                             else if (fx.name == "Jiggle") {
                                 float shiftX = std::sin(currentTime * 15.0f + y * 0.05f) * 30.0f * fx.intensity;
-                                int sourceX = std::clamp(x + static_cast<int>(shiftX), 0, width - 1);
-                                int spX = sourceX * 4;
+                                float exactX = x + shiftX;
+                                int x0 = static_cast<int>(exactX);
+                                int x1 = x0 + 1;
+                                float frac = exactX - x0;
+                                if (frac < 0.0f) { x0 -= 1; x1 -= 1; frac += 1.0f; }
+
+                                x0 = std::clamp(x0, 0, width - 1);
+                                x1 = std::clamp(x1, 0, width - 1);
                                 
-                                b = rowBuffer[spX + 0];
-                                g = rowBuffer[spX + 1];
-                                r = rowBuffer[spX + 2];
+                                int spX0 = x0 * 4;
+                                int spX1 = x1 * 4;
+                                
+                                b = static_cast<int>(rowBuffer[spX0 + 0] * (1.0f - frac) + rowBuffer[spX1 + 0] * frac);
+                                g = static_cast<int>(rowBuffer[spX0 + 1] * (1.0f - frac) + rowBuffer[spX1 + 1] * frac);
+                                r = static_cast<int>(rowBuffer[spX0 + 2] * (1.0f - frac) + rowBuffer[spX1 + 2] * frac);
                             }
                             else if (fx.name == "Directional Blur") {
                                 int blurRadius = static_cast<int>(fx.intensity * 20.0f);

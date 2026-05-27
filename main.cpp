@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <cmath> 
@@ -17,6 +17,26 @@
 #include "video_player.h"
 #include "logger.h"
 #include "math_utils.h"
+#include <unordered_map>
+
+extern "C" {
+    #include <libavformat/avformat.h>
+}
+
+double GetFileDuration(const std::string& filepath) {
+    if (filepath.empty()) return 0.0;
+    AVFormatContext* tempCtx = avformat_alloc_context();
+    if (avformat_open_input(&tempCtx, filepath.c_str(), nullptr, nullptr) != 0) {
+        return 0.0;
+    }
+    avformat_find_stream_info(tempCtx, nullptr);
+    double duration = 0.0;
+    if (tempCtx->duration > 0) {
+        duration = (double)tempCtx->duration / AV_TIME_BASE;
+    }
+    avformat_close_input(&tempCtx);
+    return duration;
+}
 
 #define AUTOSAVE_INTERVAL_SEC 60.0f
 
@@ -44,6 +64,7 @@ int main(int argc, char* argv[]) {
 
     ProjectData currentProject;  
     bool isProjectOpen = false;  
+    std::unordered_map<std::string, double> mediaDurationCache;
     
     std::vector<std::unique_ptr<VideoPlayer>> players;
     std::vector<int> lastActiveClipPerTrack;
@@ -142,8 +163,27 @@ int main(int argc, char* argv[]) {
             int viewW = WINDOW_VIEW_W - leftPanelW - rightPanelW;
             
             double maxDurationSec = 1.0;
-            for (const auto& p : players) {
-                if (p->isLoaded && p->GetDurationSeconds() > maxDurationSec) maxDurationSec = p->GetDurationSeconds();
+            for (const auto& clip : currentProject.clips) {
+                if (clip.isText || clip.isNullObject || clip.filepath.empty()) continue;
+                double fileDuration = 0.0;
+                auto it = mediaDurationCache.find(clip.filepath);
+                if (it != mediaDurationCache.end()) {
+                    fileDuration = it->second;
+                } else {
+                    fileDuration = GetFileDuration(clip.filepath);
+                    mediaDurationCache[clip.filepath] = fileDuration;
+                }
+                
+                if (fileDuration > 0.0) {
+                    float timelineLen = clip.timelineEnd - clip.timelineStart;
+                    float mediaLen = clip.mediaEnd - clip.mediaStart;
+                    if (timelineLen > 0.001f && mediaLen > 0.001f) {
+                        double durationProposed = fileDuration * (mediaLen / timelineLen);
+                        if (durationProposed > maxDurationSec) {
+                            maxDurationSec = durationProposed;
+                        }
+                    }
+                }
             }
             
             if (exportMenu.startRender) {
@@ -233,8 +273,10 @@ int main(int argc, char* argv[]) {
             if (doAddText) {
                 float start = currentProgress; float end = std::clamp(start + 0.15f, 0.0f, 1.0f); 
                 if (currentProject.clips.empty()) { start = 0.0f; end = 1.0f; }
-                currentProject.clips.push_back(VideoClip("", start, end, 1, true, "YOUR TEXT HERE"));
-                selectedClipIndex = currentProject.clips.size() - 1;
+                VideoClip newClip("", start, end, 1, true, "YOUR TEXT HERE");
+                if (TrackManager::AddClip(currentProject.clips, newClip)) {
+                    selectedClipIndex = currentProject.clips.size() - 1;
+                }
             }
 
             // --- БАЗА ИЕРАРХИИ: СБРОС И ПРОСЧЕТ МАТРИЦ ---
@@ -323,9 +365,9 @@ int main(int argc, char* argv[]) {
                         float mediaProgress = activeClip.mediaStart + localProg * (activeClip.mediaEnd - activeClip.mediaStart);
                         double targetTimeSec = mediaProgress * players[t]->GetDurationSeconds();
 
-                        if (doSeek) players[t]->Seek(mediaProgress);
+                        if (doSeek) players[t]->Seek(targetTimeSec);
                         else if (activeClipIndex != lastActiveClipPerTrack[t]) {
-                            if (std::abs(targetTimeSec - players[t]->GetCurrentSec()) > 0.1) players[t]->Seek(mediaProgress);
+                            if (std::abs(targetTimeSec - players[t]->GetCurrentSec()) > 0.1) players[t]->Seek(targetTimeSec);
                         }
 
                         players[t]->isPlaying = isExporting ? false : isPlaying; 

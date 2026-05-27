@@ -347,8 +347,10 @@ CMakeFiles/Editor.dir/main.cpp.o: \
  /usr/include/SDL2/SDL_misc.h \
  /home/mark/Documents/Projects/VideoEditor/plugins.h \
  /usr/include/c++/15/thread /usr/include/c++/15/bits/std_thread.h \
- /usr/include/c++/15/bits/this_thread_sleep.h /usr/include/dlfcn.h \
+ /usr/include/c++/15/bits/this_thread_sleep.h /usr/include/c++/15/cstring \
+ /home/mark/Documents/Projects/VideoEditor/logger.h /usr/include/dlfcn.h \
  /usr/include/bits/dlfcn.h /usr/include/bits/dl_find_object.h \
+ /home/mark/Documents/Projects/VideoEditor/math_utils.h \
  /home/mark/Documents/Projects/VideoEditor/video_player.h \
  /usr/include/ffmpeg/libavcodec/avcodec.h \
  /usr/include/ffmpeg/libavutil/samplefmt.h \
@@ -409,4 +411,11 @@ CMakeFiles/Editor.dir/main.cpp.o: \
  /usr/include/ffmpeg/libswresample/swresample.h \
  /usr/include/ffmpeg/libswresample/version_major.h \
  /usr/include/ffmpeg/libswresample/version.h \
- /usr/include/ffmpeg/libswresample/version_major.h
+ /usr/include/ffmpeg/libswresample/version_major.h \
+ /usr/include/c++/15/unordered_map \
+ /usr/include/c++/15/bits/unordered_map.h \
+ /usr/include/c++/15/bits/hashtable.h \
+ /usr/include/c++/15/bits/hashtable_policy.h \
+ /usr/include/c++/15/bits/enable_special_members.h \
+ /usr/include/c++/15/bits/node_handle.h \
+ /usr/include/c++/15/bits/erase_if.h

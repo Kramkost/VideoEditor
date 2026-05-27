@@ -329,11 +329,13 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.8f, 1.0f)); 
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.3f, 0.9f, 1.0f)); 
     if (ImGui::Button("+ ADD NULL", ImVec2(100, 30))) {
-        float start = progress; // <-- FIXED SCOPE VARIABLE
+        float start = progress;
         float end = std::clamp(start + 0.15f, 0.0f, 1.0f);
         if (clips.empty()) { start = 0.0f; end = 1.0f; }
-        clips.push_back(VideoClip("", start, end, 1, false, "", 0, 0, true));
-        selectedClipIndex = clips.size() - 1;
+        VideoClip newClip("", start, end, 1, false, "", 0, 0, true);
+        if (TrackManager::AddClip(clips, newClip)) {
+            selectedClipIndex = clips.size() - 1;
+        }
     }
     ImGui::PopStyleColor(2);
     ImGui::SameLine();
@@ -343,15 +345,8 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::PopStyleColor();
     ImGui::SameLine(); 
     if (ImGui::Button("CUT", ImVec2(60, 30))) {
-        if (clips.size() > 0 && selectedClipIndex >= 0) {
-            VideoClip newClip = clips[selectedClipIndex];
-            newClip.id = G_NextClipId++; // Новый ID для куска!
-            float ratio = (progress - clips[selectedClipIndex].timelineStart) / (clips[selectedClipIndex].timelineEnd - clips[selectedClipIndex].timelineStart);
-            float splitMedia = clips[selectedClipIndex].mediaStart + ratio * (clips[selectedClipIndex].mediaEnd - clips[selectedClipIndex].mediaStart);
-            newClip.timelineStart = progress; newClip.mediaStart = splitMedia;
-            clips[selectedClipIndex].timelineEnd = progress; clips[selectedClipIndex].mediaEnd = splitMedia;
-            clips.insert(clips.begin() + selectedClipIndex + 1, newClip);
-            selectedClipIndex++; 
+        if (TrackManager::SplitClip(clips, selectedClipIndex, progress)) {
+            selectedClipIndex++;
         }
     } 
     ImGui::SameLine(); if (clips.empty()) ImGui::BeginDisabled(); 
@@ -439,9 +434,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
             clips[i].isInteracting = true;
             float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
-            if (clips[i].mediaStart + delta < 0.0f) delta = -clips[i].mediaStart;
-            if (clips[i].timelineStart + delta >= clips[i].timelineEnd - 0.01f) delta = clips[i].timelineEnd - clips[i].timelineStart - 0.01f;
-            clips[i].timelineStart += delta; clips[i].mediaStart += delta; 
+            TrackManager::DragLeftEdge(clips, i, delta, trackWidth);
             progress = clips[i].timelineStart; doSeek = true; selectedClipIndex = i;
         }
 
@@ -451,9 +444,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
             clips[i].isInteracting = true;
             float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
-            if (clips[i].mediaEnd + delta > 1.0f) delta = 1.0f - clips[i].mediaEnd;
-            if (clips[i].timelineEnd + delta <= clips[i].timelineStart + 0.01f) delta = clips[i].timelineStart + 0.01f - clips[i].timelineEnd;
-            clips[i].timelineEnd += delta; clips[i].mediaEnd += delta;
+            TrackManager::DragRightEdge(clips, i, delta, trackWidth);
             progress = clips[i].timelineEnd; doSeek = true; selectedClipIndex = i;
         }
 
@@ -464,16 +455,10 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
             clips[i].isInteracting = true; 
             float deltaX = ImGui::GetIO().MouseDelta.x / trackWidth;
-            if (clips[i].timelineStart + deltaX < 0.0f) deltaX = -clips[i].timelineStart;
-            if (clips[i].timelineEnd + deltaX > 1.0f) deltaX = 1.0f - clips[i].timelineEnd;
-            clips[i].timelineStart += deltaX; clips[i].timelineEnd += deltaX;
-            progress = clips[i].timelineStart; doSeek = true;
-
             float mouse_y = ImGui::GetMousePos().y;
             int hoveredTrack = (mouse_y - p.y) / (trackHeight + trackSpacing);
-            if (hoveredTrack >= 0 && hoveredTrack < tracks.size()) {
-                if (tracks[hoveredTrack].type == tracks[clips[i].trackIndex].type) clips[i].trackIndex = hoveredTrack;
-            }
+            TrackManager::DragBody(clips, i, deltaX, hoveredTrack, tracks);
+            progress = clips[i].timelineStart; doSeek = true;
         }
     }
 
@@ -496,8 +481,10 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             float dropTime = std::clamp((ImGui::GetMousePos().x - (p.x + headerW)) / trackWidth, 0.0f, 1.0f);
             float end = std::clamp(dropTime + 0.15f, 0.0f, 1.0f);
             int trackIdx = std::clamp(static_cast<int>((ImGui::GetMousePos().y - p.y) / (trackHeight + trackSpacing)), 0, static_cast<int>(tracks.size() - 1));
-            clips.push_back(VideoClip(filepath, dropTime, end, trackIdx));
-            selectedClipIndex = clips.size() - 1;
+            VideoClip newClip(filepath, dropTime, end, trackIdx);
+            if (TrackManager::AddClip(clips, newClip)) {
+                selectedClipIndex = clips.size() - 1;
+            }
         }
         ImGui::EndDragDropTarget();
     }
@@ -509,3 +496,181 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
 
 void UIManager::DrawSurface(SDL_Renderer* renderer) { ImGui::Render(); ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer); }
 void UIManager::Shutdown() { ImGui_ImplSDLRenderer2_Shutdown(); ImGui_ImplSDL2_Shutdown(); ImGui::DestroyContext(); }
+
+bool TrackManager::SplitClip(std::vector<VideoClip>& clips, int selectedIndex, float progress) {
+    if (selectedIndex < 0 || selectedIndex >= static_cast<int>(clips.size())) return false;
+    
+    VideoClip& clip = clips[selectedIndex];
+    if (progress <= clip.timelineStart + 0.01f || progress >= clip.timelineEnd - 0.01f) {
+        return false;
+    }
+    
+    VideoClip newClip = clip;
+    newClip.id = G_NextClipId++;
+    
+    float ratio = (progress - clip.timelineStart) / (clip.timelineEnd - clip.timelineStart);
+    float splitMedia = clip.mediaStart + ratio * (clip.mediaEnd - clip.mediaStart);
+    
+    clip.timelineEnd = progress;
+    clip.mediaEnd = splitMedia;
+    
+    newClip.timelineStart = progress;
+    newClip.mediaStart = splitMedia;
+    
+    clips.insert(clips.begin() + selectedIndex + 1, newClip);
+    return true;
+}
+
+bool TrackManager::AddClip(std::vector<VideoClip>& clips, const VideoClip& newClip) {
+    VideoClip clip = newClip;
+    float duration = clip.timelineEnd - clip.timelineStart;
+    if (duration <= 0.005f) return false;
+    
+    float limitLeft = 0.0f;
+    float limitRight = 1.0f;
+    for (const auto& c : clips) {
+        if (c.trackIndex == clip.trackIndex) {
+            if (c.timelineEnd <= clip.timelineStart) {
+                limitLeft = std::max(limitLeft, c.timelineEnd);
+            }
+            else if (c.timelineStart >= clip.timelineEnd) {
+                limitRight = std::min(limitRight, c.timelineStart);
+            }
+        }
+    }
+    
+    if (clip.timelineStart < limitLeft) {
+        clip.timelineStart = limitLeft;
+        clip.timelineEnd = clip.timelineStart + duration;
+    }
+    if (clip.timelineEnd > limitRight) {
+        clip.timelineEnd = limitRight;
+        clip.timelineStart = clip.timelineEnd - duration;
+        if (clip.timelineStart < limitLeft) {
+            clip.timelineStart = limitLeft;
+            clip.timelineEnd = limitRight;
+        }
+    }
+    
+    if (clip.timelineEnd - clip.timelineStart >= 0.005f) {
+        clips.push_back(clip);
+        return true;
+    }
+    return false;
+}
+
+void TrackManager::DragLeftEdge(std::vector<VideoClip>& clips, int i, float delta, float trackWidth) {
+    if (i < 0 || i >= static_cast<int>(clips.size())) return;
+    
+    VideoClip& clip = clips[i];
+    float duration = clip.timelineEnd - clip.timelineStart;
+    float mediaDuration = clip.mediaEnd - clip.mediaStart;
+    
+    float limitLeft = 0.0f;
+    for (size_t j = 0; j < clips.size(); ++j) {
+        if (static_cast<int>(j) == i) continue;
+        if (clips[j].trackIndex == clip.trackIndex && clips[j].timelineEnd <= clip.timelineStart) {
+            limitLeft = std::max(limitLeft, clips[j].timelineEnd);
+        }
+    }
+    
+    if (mediaDuration > 0.0f && duration > 0.0f) {
+        float maxLeftExtension = (clip.mediaStart / mediaDuration) * duration;
+        limitLeft = std::max(limitLeft, clip.timelineStart - maxLeftExtension);
+    }
+    
+    float newStart = clip.timelineStart + delta;
+    newStart = std::clamp(newStart, limitLeft, clip.timelineEnd - 0.01f);
+    
+    float actualDelta = newStart - clip.timelineStart;
+    if (duration > 0.0f) {
+        float mediaDelta = (actualDelta / duration) * mediaDuration;
+        clip.mediaStart = std::clamp(clip.mediaStart + mediaDelta, 0.0f, clip.mediaEnd - 0.01f);
+    }
+    
+    clip.timelineStart = newStart;
+}
+
+void TrackManager::DragRightEdge(std::vector<VideoClip>& clips, int i, float delta, float trackWidth) {
+    if (i < 0 || i >= static_cast<int>(clips.size())) return;
+    
+    VideoClip& clip = clips[i];
+    float duration = clip.timelineEnd - clip.timelineStart;
+    float mediaDuration = clip.mediaEnd - clip.mediaStart;
+    
+    float limitRight = 1.0f;
+    for (size_t j = 0; j < clips.size(); ++j) {
+        if (static_cast<int>(j) == i) continue;
+        if (clips[j].trackIndex == clip.trackIndex && clips[j].timelineStart >= clip.timelineEnd) {
+            limitRight = std::min(limitRight, clips[j].timelineStart);
+        }
+    }
+    
+    if (mediaDuration > 0.0f && duration > 0.0f) {
+        float maxRightExtension = ((1.0f - clip.mediaEnd) / mediaDuration) * duration;
+        limitRight = std::min(limitRight, clip.timelineEnd + maxRightExtension);
+    }
+    
+    float newEnd = clip.timelineEnd + delta;
+    newEnd = std::clamp(newEnd, clip.timelineStart + 0.01f, limitRight);
+    
+    float actualDelta = newEnd - clip.timelineEnd;
+    if (duration > 0.0f) {
+        float mediaDelta = (actualDelta / duration) * mediaDuration;
+        clip.mediaEnd = std::clamp(clip.mediaEnd + mediaDelta, clip.mediaStart + 0.01f, 1.0f);
+    }
+    
+    clip.timelineEnd = newEnd;
+}
+
+void TrackManager::DragBody(std::vector<VideoClip>& clips, int i, float deltaX, int hoveredTrack, const std::vector<TimelineTrack>& tracks) {
+    if (i < 0 || i >= static_cast<int>(clips.size())) return;
+    
+    VideoClip& clip = clips[i];
+    float duration = clip.timelineEnd - clip.timelineStart;
+    
+    int targetTrack = clip.trackIndex;
+    if (hoveredTrack >= 0 && hoveredTrack < static_cast<int>(tracks.size())) {
+        if (tracks[hoveredTrack].type == tracks[clip.trackIndex].type) {
+            targetTrack = hoveredTrack;
+        }
+    }
+    
+    float limitLeft = 0.0f;
+    float limitRight = 1.0f;
+    for (size_t j = 0; j < clips.size(); ++j) {
+        if (static_cast<int>(j) == i) continue;
+        if (clips[j].trackIndex == targetTrack) {
+            if (clips[j].timelineEnd <= clip.timelineStart) {
+                limitLeft = std::max(limitLeft, clips[j].timelineEnd);
+            }
+            else if (clips[j].timelineStart >= clip.timelineEnd) {
+                limitRight = std::min(limitRight, clips[j].timelineStart);
+            }
+        }
+    }
+    
+    if (limitRight - limitLeft < duration) {
+        targetTrack = clip.trackIndex;
+        limitLeft = 0.0f;
+        limitRight = 1.0f;
+        for (size_t j = 0; j < clips.size(); ++j) {
+            if (static_cast<int>(j) == i) continue;
+            if (clips[j].trackIndex == targetTrack) {
+                if (clips[j].timelineEnd <= clip.timelineStart) {
+                    limitLeft = std::max(limitLeft, clips[j].timelineEnd);
+                }
+                else if (clips[j].timelineStart >= clip.timelineEnd) {
+                    limitRight = std::min(limitRight, clips[j].timelineStart);
+                }
+            }
+        }
+    }
+    
+    float newStart = clip.timelineStart + deltaX;
+    newStart = std::clamp(newStart, limitLeft, limitRight - duration);
+    
+    clip.timelineStart = newStart;
+    clip.timelineEnd = newStart + duration;
+    clip.trackIndex = targetTrack;
+}

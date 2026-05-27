@@ -1,5 +1,7 @@
 #pragma once
 #include <string>
+#include <vector>
+#include <cmath>
 #include <SDL2/SDL.h>
 #include "plugins.h" // Подключаем плагины
 
@@ -62,4 +64,24 @@ private:
     uint8_t* audioBuffer = nullptr;
     
     AVPacket* pPacket = nullptr;
+    
+    double lastQueuedAudioPts = 0.0;
+    
+    struct CachedFrame {
+        AVFrame* frame = nullptr;
+        double pts = 0.0;
+    };
+    std::vector<CachedFrame> frameCache;
+    std::vector<AVFrame*> videoFrameQueue;
+
+    double get_audio_clock() {
+        if (!audioDevice || audioStreamIndex == -1) return currentSec;
+        int queued_bytes = SDL_GetQueuedAudioSize(audioDevice);
+        double queued_sec = (double)queued_bytes / (44100.0 * 4.0); // 16-bit stereo = 4 bytes per sample frame
+        return lastQueuedAudioPts - queued_sec;
+    }
+    
+    void AddFrameToCache(AVFrame* srcFrame, double pts);
+    void ClearFrameCache();
+    void ClearVideoQueue();
 };

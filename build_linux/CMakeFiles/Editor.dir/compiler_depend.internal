@@ -1994,6 +1994,8 @@ CMakeFiles/Editor.dir/main.cpp.o
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui.h
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdl2.h
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdlrenderer2.h
+ /home/mark/Documents/Projects/VideoEditor/logger.h
+ /home/mark/Documents/Projects/VideoEditor/math_utils.h
  /home/mark/Documents/Projects/VideoEditor/plugins.h
  /home/mark/Documents/Projects/VideoEditor/project_manager.h
  /home/mark/Documents/Projects/VideoEditor/ui.h
@@ -2240,6 +2242,7 @@ CMakeFiles/Editor.dir/main.cpp.o
  /usr/include/c++/15/cstdint
  /usr/include/c++/15/cstdio
  /usr/include/c++/15/cstdlib
+ /usr/include/c++/15/cstring
  /usr/include/c++/15/ctime
  /usr/include/c++/15/cwchar
  /usr/include/c++/15/cwctype
@@ -2505,6 +2508,8 @@ CMakeFiles/Editor.dir/project_manager.cpp.o
  /home/mark/Documents/Projects/VideoEditor/project_manager.cpp
  /home/mark/Documents/Projects/VideoEditor/imgui/imconfig.h
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui.h
+ /home/mark/Documents/Projects/VideoEditor/logger.h
+ /home/mark/Documents/Projects/VideoEditor/math_utils.h
  /home/mark/Documents/Projects/VideoEditor/plugins.h
  /home/mark/Documents/Projects/VideoEditor/project_manager.h
  /home/mark/Documents/Projects/VideoEditor/ui.h
@@ -2751,6 +2756,7 @@ CMakeFiles/Editor.dir/project_manager.cpp.o
  /usr/include/c++/15/cstdint
  /usr/include/c++/15/cstdio
  /usr/include/c++/15/cstdlib
+ /usr/include/c++/15/cstring
  /usr/include/c++/15/ctime
  /usr/include/c++/15/cwchar
  /usr/include/c++/15/cwctype
@@ -2980,6 +2986,8 @@ CMakeFiles/Editor.dir/ui.cpp.o
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui.h
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdl2.h
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdlrenderer2.h
+ /home/mark/Documents/Projects/VideoEditor/logger.h
+ /home/mark/Documents/Projects/VideoEditor/math_utils.h
  /home/mark/Documents/Projects/VideoEditor/plugins.h
  /home/mark/Documents/Projects/VideoEditor/ui.h
  /usr/include/SDL2/SDL.h
@@ -3153,6 +3161,7 @@ CMakeFiles/Editor.dir/ui.cpp.o
  /usr/include/c++/15/bits/fs_fwd.h
  /usr/include/c++/15/bits/fs_ops.h
  /usr/include/c++/15/bits/fs_path.h
+ /usr/include/c++/15/bits/fstream.tcc
  /usr/include/c++/15/bits/functexcept.h
  /usr/include/c++/15/bits/functional_hash.h
  /usr/include/c++/15/bits/hash_bytes.h
@@ -3224,6 +3233,7 @@ CMakeFiles/Editor.dir/ui.cpp.o
  /usr/include/c++/15/cstdint
  /usr/include/c++/15/cstdio
  /usr/include/c++/15/cstdlib
+ /usr/include/c++/15/cstring
  /usr/include/c++/15/ctime
  /usr/include/c++/15/cwchar
  /usr/include/c++/15/cwctype
@@ -3238,6 +3248,7 @@ CMakeFiles/Editor.dir/ui.cpp.o
  /usr/include/c++/15/ext/string_conversions.h
  /usr/include/c++/15/ext/type_traits.h
  /usr/include/c++/15/filesystem
+ /usr/include/c++/15/fstream
  /usr/include/c++/15/initializer_list
  /usr/include/c++/15/iomanip
  /usr/include/c++/15/ios
@@ -3278,8 +3289,10 @@ CMakeFiles/Editor.dir/ui.cpp.o
  /usr/include/c++/15/typeinfo
  /usr/include/c++/15/vector
  /usr/include/c++/15/x86_64-redhat-linux/bits/atomic_word.h
+ /usr/include/c++/15/x86_64-redhat-linux/bits/basic_file.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/c++allocator.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/c++config.h
+ /usr/include/c++/15/x86_64-redhat-linux/bits/c++io.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/c++locale.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/cpu_defines.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/ctype_base.h
@@ -3446,6 +3459,7 @@ CMakeFiles/Editor.dir/ui.cpp.o
 
 CMakeFiles/Editor.dir/video_player.cpp.o
  /home/mark/Documents/Projects/VideoEditor/video_player.cpp
+ /home/mark/Documents/Projects/VideoEditor/logger.h
  /home/mark/Documents/Projects/VideoEditor/plugins.h
  /home/mark/Documents/Projects/VideoEditor/video_player.h
  /usr/include/SDL2/SDL.h
@@ -3689,6 +3703,7 @@ CMakeFiles/Editor.dir/video_player.cpp.o
  /usr/include/c++/15/cstdint
  /usr/include/c++/15/cstdio
  /usr/include/c++/15/cstdlib
+ /usr/include/c++/15/cstring
  /usr/include/c++/15/ctime
  /usr/include/c++/15/cwchar
  /usr/include/c++/15/cwctype
@@ -3974,7 +3989,6 @@ Editor
  /usr/lib/gcc/x86_64-redhat-linux/15/libgcc_s.so
  /usr/lib/gcc/x86_64-redhat-linux/15/libstdc++.so
  /usr/lib/libcairo-gobject.so.2
- /usr/lib64/libOpenCL.so.1
  /usr/lib64/libSDL2-2.0.so.0.3200.64
  /usr/lib64/libSvtAv1Enc.so.3
  /usr/lib64/libX11-xcb.so.1
@@ -4004,6 +4018,7 @@ Editor
  /usr/lib64/libdatrie.so.1
  /usr/lib64/libdav1d.so.7
  /usr/lib64/libdcerpc-binding.so.0
+ /usr/lib64/libdl.so.2
  /usr/lib64/libdrm.so.2
  /usr/lib64/libevent-2.1.so.7
  /usr/lib64/libffi.so.8
@@ -4075,6 +4090,7 @@ Editor
  /usr/lib64/libpgm-5.3.so.0
  /usr/lib64/libpixman-1.so.0
  /usr/lib64/libpng16.so.16
+ /usr/lib64/libpthread.so.0
  /usr/lib64/librav1e.so.0
  /usr/lib64/libresolv.so.2
  /usr/lib64/librsvg-2.so.2
@@ -4192,6 +4208,7 @@ Editor
  /usr/lib64/samba/libutil-reg-private-samba.so
  /usr/lib64/samba/libutil-setid-private-samba.so
  /usr/lib64/samba/libutil-tdb-private-samba.so
+ /usr/local/cuda/targets/x86_64-linux/lib/libOpenCL.so.1
  /home/mark/Documents/Projects/VideoEditor/build_linux/CMakeFiles/Editor.dir/export_ui.cpp.o
  /home/mark/Documents/Projects/VideoEditor/build_linux/CMakeFiles/Editor.dir/imgui/imgui.cpp.o
  /home/mark/Documents/Projects/VideoEditor/build_linux/CMakeFiles/Editor.dir/imgui/imgui_demo.cpp.o

@@ -338,10 +338,16 @@ CMakeFiles/Editor.dir/ui.cpp.o: \
  /usr/include/c++/15/bits/fs_dir.h /usr/include/c++/15/bits/fs_ops.h \
  /usr/include/c++/15/iostream /usr/include/c++/15/thread \
  /usr/include/c++/15/bits/std_thread.h \
- /usr/include/c++/15/bits/this_thread_sleep.h /usr/include/dlfcn.h \
+ /usr/include/c++/15/bits/this_thread_sleep.h /usr/include/c++/15/cstring \
+ /home/mark/Documents/Projects/VideoEditor/logger.h /usr/include/dlfcn.h \
  /usr/include/bits/dlfcn.h /usr/include/bits/dl_find_object.h \
+ /home/mark/Documents/Projects/VideoEditor/math_utils.h \
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui.h \
  /home/mark/Documents/Projects/VideoEditor/imgui/imconfig.h \
  /usr/include/assert.h \
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdl2.h \
- /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdlrenderer2.h
+ /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdlrenderer2.h \
+ /usr/include/c++/15/fstream \
+ /usr/include/c++/15/x86_64-redhat-linux/bits/basic_file.h \
+ /usr/include/c++/15/x86_64-redhat-linux/bits/c++io.h \
+ /usr/include/c++/15/bits/fstream.tcc

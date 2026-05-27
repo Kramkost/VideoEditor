@@ -117,3 +117,11 @@ private:
     std::string OpenFileDialog();
     bool showSettings = false; 
 };
+
+namespace TrackManager {
+    bool SplitClip(std::vector<VideoClip>& clips, int selectedIndex, float progress);
+    bool AddClip(std::vector<VideoClip>& clips, const VideoClip& newClip);
+    void DragLeftEdge(std::vector<VideoClip>& clips, int i, float delta, float trackWidth);
+    void DragRightEdge(std::vector<VideoClip>& clips, int i, float delta, float trackWidth);
+    void DragBody(std::vector<VideoClip>& clips, int i, float deltaX, int hoveredTrack, const std::vector<TimelineTrack>& tracks);
+}

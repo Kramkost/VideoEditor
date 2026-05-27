@@ -341,8 +341,10 @@ CMakeFiles/Editor.dir/project_manager.cpp.o: \
  /home/mark/Documents/Projects/VideoEditor/plugins.h \
  /usr/include/c++/15/iostream /usr/include/c++/15/thread \
  /usr/include/c++/15/bits/std_thread.h \
- /usr/include/c++/15/bits/this_thread_sleep.h /usr/include/dlfcn.h \
+ /usr/include/c++/15/bits/this_thread_sleep.h /usr/include/c++/15/cstring \
+ /home/mark/Documents/Projects/VideoEditor/logger.h /usr/include/dlfcn.h \
  /usr/include/bits/dlfcn.h /usr/include/bits/dl_find_object.h \
+ /home/mark/Documents/Projects/VideoEditor/math_utils.h \
  /home/mark/Documents/Projects/VideoEditor/imgui/imgui.h \
  /home/mark/Documents/Projects/VideoEditor/imgui/imconfig.h \
  /usr/include/assert.h /usr/include/c++/15/fstream \

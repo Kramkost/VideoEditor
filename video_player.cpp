@@ -137,6 +137,7 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
         swr_init(swrCtx);
 
         audioBuffer = (uint8_t*)av_malloc(192000); 
+        lastQueuedAudioPts = 0.0;
         SDL_PauseAudioDevice(audioDevice, 0); 
     }
 
@@ -156,46 +157,98 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
         if (!isImage) {
             // ФИКС 1: ЗАЩИТА ОТ ПУСТОГО ВИДЕО (Если это просто аудиофайл)
             if (videoCodecCtx) {
-                if (targetTimeSec - currentSec > 0.15) videoCodecCtx->skip_frame = AVDISCARD_NONREF; 
-                else videoCodecCtx->skip_frame = AVDISCARD_DEFAULT;
+                double currentClock = get_audio_clock();
+                if (targetTimeSec - currentClock > 0.25) {
+                    videoCodecCtx->skip_frame = AVDISCARD_NONREF;
+                } else {
+                    videoCodecCtx->skip_frame = AVDISCARD_DEFAULT;
+                }
             }
 
-            int loopProtection = 0; 
-            while (currentSec <= targetTimeSec && loopProtection < 10 && av_read_frame(formatCtx, pPacket) >= 0) {
-                loopProtection++;
+            int decodedPackets = 0;
+            bool needMoreData = true;
+            
+            while (needMoreData && decodedPackets < 60 && av_read_frame(formatCtx, pPacket) >= 0) {
+                decodedPackets++;
                 
                 // Обработка ВИДЕО
                 if (pPacket->stream_index == videoStreamIndex && videoCodecCtx) {
                     avcodec_send_packet(videoCodecCtx, pPacket);
-                    if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
-                        currentSec = pFrame->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
-                        frameDecoded = true; 
+                    while (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
+                        double pts = pFrame->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
+                        AVFrame* cloned = av_frame_clone(pFrame);
+                        videoFrameQueue.push_back(cloned);
+                        currentSec = pts;
                     }
                 }
                 // Обработка АУДИО
                 else if (pPacket->stream_index == audioStreamIndex && audioDevice) {
                     double audioPtsSec = pPacket->pts * av_q2d(formatCtx->streams[audioStreamIndex]->time_base);
                     
-                    // ФИКС 2: ЕСЛИ ЭТО ТОЛЬКО АУДИО (НЕТ ВИДЕО), ВРЕМЯ ДИКТУЕТ ЗВУК!
                     if (videoStreamIndex == -1) {
                         currentSec = audioPtsSec; 
                     }
 
                     avcodec_send_packet(audioCodecCtx, pPacket);
                     while (avcodec_receive_frame(audioCodecCtx, aFrame) == 0) {
-                        // ФИКС 3: Защита swrCtx и проверка на отрицательный результат
-                        if (swrCtx && audioPtsSec >= targetTimeSec - 0.15) {
+                        if (swrCtx && audioPtsSec >= targetTimeSec - 0.25) {
                             int out_samples = swr_convert(swrCtx, &audioBuffer, 48000, (const uint8_t**)aFrame->data, aFrame->nb_samples);
                             if (out_samples > 0) {
                                 int data_size = out_samples * 2 * 2; 
                                 int16_t* samples = (int16_t*)audioBuffer;
-                                for (int i = 0; i < data_size / 2; i++) samples[i] = (int16_t)(samples[i] * currentVolume);
+                                for (int i = 0; i < data_size / 2; i++) {
+                                    samples[i] = (int16_t)(samples[i] * currentVolume);
+                                }
                                 SDL_QueueAudio(audioDevice, audioBuffer, data_size);
+                                
+                                if (lastQueuedAudioPts < audioPtsSec || SDL_GetQueuedAudioSize(audioDevice) == 0) {
+                                    lastQueuedAudioPts = audioPtsSec;
+                                }
+                                lastQueuedAudioPts += (double)out_samples / 44100.0;
                             }
                         }
                     }
                 }
                 av_packet_unref(pPacket);
+                
+                // Проверяем, нужно ли декодировать еще
+                if (audioStreamIndex != -1 && audioDevice) {
+                    double queued_sec = (double)SDL_GetQueuedAudioSize(audioDevice) / (44100.0 * 4.0);
+                    needMoreData = (queued_sec < 0.25);
+                } else {
+                    needMoreData = (currentSec < targetTimeSec);
+                }
+            }
+            
+            // Выбираем видеокадр, который ближе всего к аудио часам
+            double clockTime = get_audio_clock();
+            if (audioStreamIndex == -1 || !audioDevice) {
+                clockTime = targetTimeSec;
+            }
+            
+            AVFrame* bestFrame = nullptr;
+            size_t bestIndex = -1;
+            for (size_t i = 0; i < videoFrameQueue.size(); ++i) {
+                double pts = videoFrameQueue[i]->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
+                if (pts <= clockTime) {
+                    bestFrame = videoFrameQueue[i];
+                    bestIndex = i;
+                } else {
+                    break;
+                }
+            }
+            
+            if (bestFrame) {
+                av_frame_unref(pFrame);
+                av_frame_ref(pFrame, bestFrame);
+                frameDecoded = true;
+                currentSec = bestFrame->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
+                
+                // Очищаем старые кадры из очереди
+                for (size_t i = 0; i <= bestIndex; ++i) {
+                    av_frame_free(&videoFrameQueue[i]);
+                }
+                videoFrameQueue.erase(videoFrameQueue.begin(), videoFrameQueue.begin() + bestIndex + 1);
             }
         }
     } else {
@@ -244,37 +297,75 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
 void VideoPlayer::Seek(float progress) {
     if (!isLoaded || isImage) return; 
     
-    int64_t target_pts_av = (int64_t)(progress * formatCtx->duration);
-    av_seek_frame(formatCtx, -1, target_pts_av, AVSEEK_FLAG_BACKWARD);
+    double targetSec = progress * durationSec;
     
-    if (videoCodecCtx) avcodec_flush_buffers(videoCodecCtx); 
-    if (audioCodecCtx) { avcodec_flush_buffers(audioCodecCtx); if(audioDevice) SDL_ClearQueuedAudio(audioDevice); }
+    // 1. Проверяем кэш кадров
+    for (const auto& cf : frameCache) {
+        if (std::abs(cf.pts - targetSec) < 0.02) { // Точность 20мс
+            av_frame_unref(pFrame);
+            av_frame_ref(pFrame, cf.frame);
+            currentSec = cf.pts;
+            textureNeedsUpdate = true;
+            ClearVideoQueue();
+            if (audioDevice) SDL_ClearQueuedAudio(audioDevice);
+            return;
+        }
+    }
     
+    // 2. Решаем, нужно ли делать Seek или можно просто додекодировать вперед
+    bool doSeek = true;
+    if (videoStreamIndex != -1 && targetSec >= currentSec && (targetSec - currentSec) < 1.5) {
+        doSeek = false;
+    }
+    
+    if (doSeek) {
+        int64_t target_pts_av = (int64_t)(progress * formatCtx->duration);
+        av_seek_frame(formatCtx, -1, target_pts_av, AVSEEK_FLAG_BACKWARD);
+        
+        if (videoCodecCtx) avcodec_flush_buffers(videoCodecCtx); 
+        if (audioCodecCtx) avcodec_flush_buffers(audioCodecCtx);
+        if (audioDevice) SDL_ClearQueuedAudio(audioDevice);
+        ClearVideoQueue();
+        lastQueuedAudioPts = targetSec;
+    }
+    
+    // 3. Декодируем вперед до нужного момента
     if (videoStreamIndex != -1) {
         bool frameDecoded = false;
-        while (!frameDecoded && av_read_frame(formatCtx, pPacket) >= 0) {
+        int decodedCount = 0;
+        while (!frameDecoded && decodedCount < 300 && av_read_frame(formatCtx, pPacket) >= 0) {
             if (pPacket->stream_index == videoStreamIndex) {
                 avcodec_send_packet(videoCodecCtx, pPacket);
-                if (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
+                while (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
+                    decodedCount++;
                     currentSec = pFrame->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
-                    frameDecoded = true;
+                    AddFrameToCache(pFrame, currentSec);
+                    if (currentSec >= targetSec - 0.02) {
+                        frameDecoded = true;
+                        break;
+                    }
                 }
             }
             av_packet_unref(pPacket);
         }
     } else {
-        currentSec = target_pts_av / (double)AV_TIME_BASE; 
+        currentSec = targetSec; 
     }
     textureNeedsUpdate = true; 
 }
 
 double VideoPlayer::GetDurationSeconds() { return durationSec; }
 double VideoPlayer::GetCurrentSec() { return currentSec; }
-void VideoPlayer::ClearAudio() { if (audioDevice) SDL_ClearQueuedAudio(audioDevice); }
+void VideoPlayer::ClearAudio() { 
+    if (audioDevice) SDL_ClearQueuedAudio(audioDevice); 
+    lastQueuedAudioPts = -1.0;
+}
 
 void VideoPlayer::CloseVideo() {
     if (!isLoaded) return;
     isLoaded = false; isPlaying = false;
+    ClearVideoQueue();
+    ClearFrameCache();
     if (audioDevice) { SDL_CloseAudioDevice(audioDevice); audioDevice = 0; }
     if (swrCtx) { swr_free(&swrCtx); }
     if (audioBuffer) { av_free(audioBuffer); audioBuffer = nullptr; }
@@ -290,4 +381,33 @@ void VideoPlayer::CloseVideo() {
     if (videoCodecCtx) { avcodec_free_context(&videoCodecCtx); videoCodecCtx = nullptr; }
     if (formatCtx) { avformat_close_input(&formatCtx); formatCtx = nullptr; }
     if (texture) { SDL_DestroyTexture(texture); texture = nullptr; }
+}
+
+void VideoPlayer::AddFrameToCache(AVFrame* srcFrame, double pts) {
+    if (!srcFrame || srcFrame->width <= 0) return;
+    for (const auto& cf : frameCache) {
+        if (std::abs(cf.pts - pts) < 0.01) return;
+    }
+    if (frameCache.size() >= 60) {
+        if (frameCache.front().frame) av_frame_free(&frameCache.front().frame);
+        frameCache.erase(frameCache.begin());
+    }
+    CachedFrame cf;
+    cf.frame = av_frame_clone(srcFrame);
+    cf.pts = pts;
+    frameCache.push_back(cf);
+}
+
+void VideoPlayer::ClearFrameCache() {
+    for (auto& cf : frameCache) {
+        if (cf.frame) av_frame_free(&cf.frame);
+    }
+    frameCache.clear();
+}
+
+void VideoPlayer::ClearVideoQueue() {
+    for (auto* f : videoFrameQueue) {
+        if (f) av_frame_free(&f);
+    }
+    videoFrameQueue.clear();
 }

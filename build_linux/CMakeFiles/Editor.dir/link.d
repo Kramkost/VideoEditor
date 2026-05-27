@@ -107,7 +107,7 @@ Editor: \
   /usr/lib64/libvdpau.so.1 \
   /usr/lib64/libX11.so.6 \
   /usr/lib64/libdrm.so.2 \
-  /usr/lib64/libOpenCL.so.1 \
+  /usr/local/cuda/targets/x86_64-linux/lib/libOpenCL.so.1 \
   /usr/lib64/libsoxr.so.0 \
   /lib64/ld-linux-x86-64.so.2 \
   /usr/lib64/libfontconfig.so.1 \
@@ -182,6 +182,8 @@ Editor: \
   /usr/lib64/libXfixes.so.3 \
   /usr/lib64/libX11-xcb.so.1 \
   /usr/lib64/libxcb-dri3.so.0 \
+  /usr/lib64/libdl.so.2 \
+  /usr/lib64/libpthread.so.0 \
   /usr/lib64/libgomp.so.1 \
   /usr/lib64/libharfbuzz.so.0 \
   /usr/lib64/libgmodule-2.0.so.0 \
@@ -485,7 +487,7 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 
 /usr/lib64/libdrm.so.2:
 
-/usr/lib64/libOpenCL.so.1:
+/usr/local/cuda/targets/x86_64-linux/lib/libOpenCL.so.1:
 
 /usr/lib64/libsoxr.so.0:
 
@@ -634,6 +636,10 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 /usr/lib64/libX11-xcb.so.1:
 
 /usr/lib64/libxcb-dri3.so.0:
+
+/usr/lib64/libdl.so.2:
+
+/usr/lib64/libpthread.so.0:
 
 /usr/lib64/libgomp.so.1:
 
