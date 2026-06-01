@@ -113,10 +113,17 @@ int main(int argc, char* argv[]) {
                 }
             }
             
-            if (event.type == SDL_KEYDOWN && isProjectOpen && !isExporting) {
+            if (event.type == SDL_KEYDOWN && isProjectOpen && !isExporting && !ImGui::GetIO().WantCaptureKeyboard) {
                 if (event.key.keysym.sym == SDLK_SPACE) isPlaying = !isPlaying; 
                 if (event.key.keysym.sym == SDLK_RIGHT) currentProgress = std::clamp(currentProgress + 0.05f, 0.0f, 1.0f);
                 if (event.key.keysym.sym == SDLK_LEFT)  currentProgress = std::clamp(currentProgress - 0.05f, 0.0f, 1.0f);
+                
+                if (event.key.keysym.sym == SDLK_DELETE || event.key.keysym.sym == SDLK_BACKSPACE) {
+                    if (selectedClipIndex >= 0 && selectedClipIndex < currentProject.clips.size()) {
+                        currentProject.clips.erase(currentProject.clips.begin() + selectedClipIndex);
+                        selectedClipIndex = -1;
+                    }
+                }
                 
                 if (event.key.keysym.sym == SDLK_s && (SDL_GetModState() & KMOD_CTRL)) {
                     if (currentProject.saveFilepath.empty()) ProjectManager::SaveProjectAs(currentProject);
@@ -324,8 +331,16 @@ int main(int argc, char* argv[]) {
             for (int t = 0; t < currentProject.tracks.size(); ++t) {
                 int activeClipIndex = -1;
                 for (int i = 0; i < currentProject.clips.size(); ++i) {
-                    if (currentProject.clips[i].trackIndex == t && currentProgress >= currentProject.clips[i].timelineStart && currentProgress < currentProject.clips[i].timelineEnd) {
-                        activeClipIndex = i; break;
+                    if (currentProject.clips[i].trackIndex == t && 
+                        currentProgress >= currentProject.clips[i].timelineStart && 
+                        currentProgress <= currentProject.clips[i].timelineEnd) {
+                        
+                        // Prevent out-of-bounds rendering (strict less-than normally) but allow boundary match if selected
+                        if (currentProgress < currentProject.clips[i].timelineEnd || i == selectedClipIndex) {
+                            if (activeClipIndex == -1 || i == selectedClipIndex) {
+                                activeClipIndex = i;
+                            }
+                        }
                     }
                 }
 
@@ -364,15 +379,15 @@ int main(int argc, char* argv[]) {
                         
                         float mediaProgress = activeClip.mediaStart + localProg * (activeClip.mediaEnd - activeClip.mediaStart);
                         double targetTimeSec = mediaProgress * players[t]->GetDurationSeconds();
+                        bool isVideoTrack = (currentProject.tracks[t].type == TRACK_VIDEO);
 
-                        if (doSeek) players[t]->Seek(mediaProgress);
+                        if (doSeek) players[t]->Seek(mediaProgress, isVideoTrack);
                         else if (activeClipIndex != lastActiveClipPerTrack[t]) {
-                            if (std::abs(targetTimeSec - players[t]->GetCurrentSec()) > 0.1) players[t]->Seek(mediaProgress);
+                            if (std::abs(targetTimeSec - players[t]->GetCurrentSec()) > 0.1) players[t]->Seek(mediaProgress, isVideoTrack);
                         }
 
                         players[t]->isPlaying = isExporting ? false : isPlaying; 
                         players[t]->currentVolume = activeClip.volume;
-                        bool isVideoTrack = (currentProject.tracks[t].type == TRACK_VIDEO);
 
                         // ОТПРАВЛЯЕМ ГЛОБАЛЬНЫЕ КООРДИНАТЫ В ПЛЕЕР
                         players[t]->UpdateAndDraw(renderer, leftPanelW, 0, viewW, WINDOW_VIEW_H, targetTimeSec, isVideoTrack, 

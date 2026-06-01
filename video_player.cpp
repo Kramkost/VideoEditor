@@ -181,7 +181,7 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
                 decodedPackets++;
                 
                 // Обработка ВИДЕО
-                if (pPacket->stream_index == videoStreamIndex && videoCodecCtx) {
+                if (pPacket->stream_index == videoStreamIndex && videoCodecCtx && drawVideo) {
                     avcodec_send_packet(videoCodecCtx, pPacket);
                     while (avcodec_receive_frame(videoCodecCtx, pFrame) == 0) {
                         double pts = pFrame->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
@@ -194,7 +194,7 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
                 else if (pPacket->stream_index == audioStreamIndex && audioDevice) {
                     double audioPtsSec = pPacket->pts * av_q2d(formatCtx->streams[audioStreamIndex]->time_base);
                     
-                    if (videoStreamIndex == -1) {
+                    if (videoStreamIndex == -1 || !drawVideo) {
                         currentSec = audioPtsSec; 
                     }
 
@@ -303,27 +303,29 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
     }
 }
 
-void VideoPlayer::Seek(float progress) {
+void VideoPlayer::Seek(float progress, bool drawVideo) {
     if (!isLoaded || isImage) return; 
     
     double targetSec = progress * durationSec;
     
     // 1. Проверяем кэш кадров
-    for (const auto& cf : frameCache) {
-        if (std::abs(cf.pts - targetSec) < 0.02) { // Точность 20мс
-            av_frame_unref(pFrame);
-            av_frame_ref(pFrame, cf.frame);
-            currentSec = cf.pts;
-            textureNeedsUpdate = true;
-            ClearVideoQueue();
-            if (audioDevice) SDL_ClearQueuedAudio(audioDevice);
-            return;
+    if (drawVideo) {
+        for (const auto& cf : frameCache) {
+            if (std::abs(cf.pts - targetSec) < 0.02) { // Точность 20мс
+                av_frame_unref(pFrame);
+                av_frame_ref(pFrame, cf.frame);
+                currentSec = cf.pts;
+                textureNeedsUpdate = true;
+                ClearVideoQueue();
+                if (audioDevice) SDL_ClearQueuedAudio(audioDevice);
+                return;
+            }
         }
     }
     
     // 2. Решаем, нужно ли делать Seek или можно просто додекодировать вперед
     bool doHardSeek = true;
-    if (videoStreamIndex != -1 && targetSec >= currentSec && (targetSec - currentSec) < 1.5) {
+    if (drawVideo && videoStreamIndex != -1 && targetSec >= currentSec && (targetSec - currentSec) < 1.5) {
         doHardSeek = false;
     }
     
@@ -344,7 +346,7 @@ void VideoPlayer::Seek(float progress) {
     }
     
     // 3. Декодируем вперед до нужного момента
-    if (videoStreamIndex != -1) {
+    if (drawVideo && videoStreamIndex != -1) {
         bool frameDecoded = false;
         int decodedCount = 0;
         while (!frameDecoded && decodedCount < 300 && av_read_frame(formatCtx, pPacket) >= 0) {
@@ -365,7 +367,9 @@ void VideoPlayer::Seek(float progress) {
     } else {
         currentSec = targetSec; 
     }
-    textureNeedsUpdate = true; 
+    if (drawVideo) {
+        textureNeedsUpdate = true; 
+    }
 }
 
 double VideoPlayer::GetDurationSeconds() { return durationSec; }

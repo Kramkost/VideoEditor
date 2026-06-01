@@ -47,7 +47,58 @@ public:
 
     static void InitAndScanPlugins() {
         LOG_DEBUG("Initializing PluginManager. Internal plugins loaded: %zu", internalPlugins.size());
-        // Load external DLLs/SOs here if needed
+        
+        std::vector<std::filesystem::path> scanDirs = { ".", "./plugins" };
+        
+        for (const auto& dir : scanDirs) {
+            if (!std::filesystem::exists(dir)) continue;
+            for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+                if (entry.is_regular_file()) {
+                    std::string ext = entry.path().extension().string();
+                    std::string filename = entry.path().filename().string();
+                    
+                    #ifdef _WIN32
+                    bool isPlugin = (ext == ".dll");
+                    #else
+                    bool isPlugin = (ext == ".so");
+                    #endif
+                    
+                    if (isPlugin && filename != "Editor.dll" && filename != "Editor.so" && filename != "blood_filter.so") {
+                        // Avoid infinite loops or loading non-plugin libraries if they don't match
+                    }
+                    
+                    if (isPlugin && filename != "libSDL2.so" && filename != "libSDL2-2.0.so" && 
+                        filename != "libavcodec.so" && filename != "libavformat.so" && 
+                        filename != "libswscale.so" && filename != "libavutil.so" && 
+                        filename != "libswresample.so") {
+                        
+                        std::string pathStr = entry.path().string();
+                        #ifndef _WIN32
+                        if (pathStr.find('/') == std::string::npos) {
+                            pathStr = "./" + pathStr;
+                        }
+                        #endif
+                        
+                        HMODULE handle = LoadLibraryA(pathStr.c_str());
+                        if (handle) {
+                            GetNameFunc getName = (GetNameFunc)GetProcAddress(handle, "GetPluginName");
+                            ProcessFunc process = (ProcessFunc)GetProcAddress(handle, "ProcessFrame");
+                            
+                            if (getName && process) {
+                                ExternalPlugin plugin;
+                                plugin.name = getName();
+                                plugin.handle = handle;
+                                plugin.process = process;
+                                externalPlugins.push_back(plugin);
+                                LOG_DEBUG("Loaded external plugin: %s from %s", plugin.name.c_str(), pathStr.c_str());
+                            } else {
+                                FreeLibrary(handle);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     static void Shutdown() {

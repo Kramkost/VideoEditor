@@ -268,6 +268,13 @@ bool ProjectManager::LoadProject(const std::string& filepath, ProjectData& outPr
         outProject.tracks = { {"Video 1 (Main)", TRACK_VIDEO}, {"Video 2 (Overlay)", TRACK_VIDEO}, {"Audio 1 (Music)", TRACK_AUDIO} };
     }
 
+    // Восстанавливаем G_NextClipId, чтобы новые клипы не дублировали ID существующих
+    uint32_t maxId = 0;
+    for (const auto& clip : outProject.clips) {
+        if (clip.id > maxId) maxId = clip.id;
+    }
+    G_NextClipId = maxId + 1;
+
     RemoveFromRecent(filepath);
     recentProjects.insert(recentProjects.begin(), filepath);
     SaveRecentList();
@@ -283,8 +290,21 @@ std::string ProjectManager::OpenFileDialog() {
     ofn.lpstrFilter = "Titan Project (*.titansave)\0*.titansave\0All Files\0*.*\0";
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
     if (GetOpenFileNameA(&ofn) == TRUE) return std::string(ofn.lpstrFile);
-#endif
     return "";
+#else
+    FILE* pipe = popen("zenity --file-selection --title=\"Open Project\" --file-filter=\"*.titansave\" 2>/dev/null", "r");
+    if (pipe) {
+        char buffer[512];
+        if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            std::string result = buffer;
+            result.erase(result.find_last_not_of(" \n\r\t") + 1); 
+            pclose(pipe);
+            return result;
+        }
+        pclose(pipe);
+    }
+    return "";
+#endif
 }
 
 std::string ProjectManager::SaveFileDialog() {
@@ -297,6 +317,19 @@ std::string ProjectManager::SaveFileDialog() {
     ofn.lpstrFilter = "Titan Project (*.titansave)\0*.titansave\0";
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
     if (GetSaveFileNameA(&ofn) == TRUE) return std::string(ofn.lpstrFile);
-#endif
     return "";
+#else
+    FILE* pipe = popen("zenity --file-selection --save --title=\"Save Project\" --confirm-overwrite --file-filter=\"*.titansave\" 2>/dev/null", "r");
+    if (pipe) {
+        char buffer[512];
+        if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            std::string result = buffer;
+            result.erase(result.find_last_not_of(" \n\r\t") + 1); 
+            pclose(pipe);
+            return result;
+        }
+        pclose(pipe);
+    }
+    return "";
+#endif
 }
