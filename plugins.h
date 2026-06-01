@@ -50,6 +50,17 @@ public:
         // Load external DLLs/SOs here if needed
     }
 
+    static void Shutdown() {
+        for (auto& plugin : externalPlugins) {
+            if (plugin.handle) {
+                FreeLibrary(plugin.handle);
+                plugin.handle = nullptr;
+            }
+        }
+        externalPlugins.clear();
+        LOG_DEBUG("PluginManager shutdown: all external plugins unloaded.");
+    }
+
     static std::vector<std::string> GetAvailablePlugins() {
         std::vector<std::string> all = internalPlugins;
         for (const auto& ext : externalPlugins) all.push_back(ext.name);
@@ -133,6 +144,26 @@ public:
                                     }
                                     b = sumB / count; g = sumG / count; r = sumR / count;
                                 }
+                            }
+                            else if (fx.name == "Glitch / Invert") {
+                                r = 255 - r;
+                                g = 255 - g;
+                                b = 255 - b;
+                                // Эффект глитча: смещение каналов + инверсия
+                                if ((y + static_cast<int>(currentTime * 60.0f)) % 20 < 3) {
+                                    int shift = static_cast<int>(fx.intensity * 40.0f);
+                                    int sx = std::clamp(x + shift, 0, width - 1);
+                                    int spx = sx * 4;
+                                    r = rowBuffer[spx + 2];
+                                }
+                            }
+                            else if (fx.name == "Sepia (Retro)") {
+                                int sepiaR = std::clamp(static_cast<int>(r * 0.393f + g * 0.769f + b * 0.189f), 0, 255);
+                                int sepiaG = std::clamp(static_cast<int>(r * 0.349f + g * 0.686f + b * 0.168f), 0, 255);
+                                int sepiaB = std::clamp(static_cast<int>(r * 0.272f + g * 0.534f + b * 0.131f), 0, 255);
+                                r = r + static_cast<int>((sepiaR - r) * fx.intensity);
+                                g = g + static_cast<int>((sepiaG - g) * fx.intensity);
+                                b = b + static_cast<int>((sepiaB - b) * fx.intensity);
                             }
                         }
                         row[pX + 0] = std::clamp(b, 0, 255);

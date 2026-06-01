@@ -12,7 +12,8 @@ extern "C" {
     }
 
     // 2. Сама математика эффекта (обрабатывает весь кадр)
-    TITAN_EXPORT void ProcessFrame(uint8_t* pixels, int width, int height, int pitch, float intensity) {
+    TITAN_EXPORT void ProcessFrame(uint8_t* pixels, int width, int height, int pitch, float intensity, float time) {
+        (void)time; // Этот эффект не зависит от времени
         for (int y = 0; y < height; ++y) {
             uint8_t* row = pixels + y * pitch;
             for (int x = 0; x < width; ++x) {
@@ -22,14 +23,14 @@ extern "C" {
                 int r = row[x * 4 + 2];
 
                 // Делаем кровавый эффект: гасим синий и зеленый, выкручиваем красный
-                float targetR = std::clamp((int)(r * 1.5f), 0, 255);
-                float targetG = g * 0.3f;
-                float targetB = b * 0.3f;
+                int targetR = std::clamp(static_cast<int>(r * 1.5f), 0, 255);
+                int targetG = static_cast<int>(g * 0.3f);
+                int targetB = static_cast<int>(b * 0.3f);
 
                 // Применяем в зависимости от интенсивности ползунка UI
-                row[x * 4 + 0] = b + (targetB - b) * intensity;
-                row[x * 4 + 1] = g + (targetG - g) * intensity;
-                row[x * 4 + 2] = r + (targetR - r) * intensity;
+                row[x * 4 + 0] = static_cast<uint8_t>(b + (targetB - b) * intensity);
+                row[x * 4 + 1] = static_cast<uint8_t>(g + (targetG - g) * intensity);
+                row[x * 4 + 2] = static_cast<uint8_t>(r + (targetR - r) * intensity);
             }
         }
     }

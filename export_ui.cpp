@@ -77,7 +77,7 @@ void ExportUI::Draw(bool* showMenu) {
 
     ImGui::Text("Save to:");
     char pathBuffer[260];
-    strncpy(pathBuffer, outputPath.c_str(), sizeof(pathBuffer));
+    snprintf(pathBuffer, sizeof(pathBuffer), "%s", outputPath.c_str());
     ImGui::InputText("##path", pathBuffer, sizeof(pathBuffer), ImGuiInputTextFlags_ReadOnly);
     ImGui::SameLine();
     if (ImGui::Button("Browse...")) {

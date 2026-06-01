@@ -111,11 +111,15 @@ bool ProjectManager::DrawStartScreen(int windowW, int windowH, ProjectData& outP
         if (ImGui::Button("YES, DELETE", ImVec2(120, 0))) {
             std::filesystem::remove(projectToDelete); 
             RemoveFromRecent(projectToDelete);        
+            projectToDelete.clear();
             ImGui::CloseCurrentPopup();
         }
         ImGui::PopStyleColor(2);
         ImGui::SetItemDefaultFocus(); ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2(120, 0))) ImGui::CloseCurrentPopup();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            projectToDelete.clear();
+            ImGui::CloseCurrentPopup();
+        }
         ImGui::EndPopup();
     }
 
@@ -136,13 +140,32 @@ bool ProjectManager::SaveProject(const ProjectData& project) {
     std::ofstream file(std::filesystem::path(project.saveFilepath));
     if (!file.is_open()) return false;
 
+    // Сохраняем треки
+    file << "[TRACKS]\n";
+    for (const auto& t : project.tracks) {
+        file << t.name << "|" << t.type << "\n";
+    }
+
     file << "[MEDIA]\n";
     for (const auto& m : project.mediaFiles) file << m << "\n";
 
     file << "[CLIPS]\n";
     for (const auto& c : project.clips) {
-        // ДОБАВЛЕНО СОХРАНЕНИЕ ID, ParentID и IsNullObject
-        file << c.id << "|" << c.parentId << "|" << c.isNullObject << "|" << c.filepath << "|" << c.timelineStart << "|" << c.timelineEnd << "|" << c.trackIndex << "|" << c.isText << "|" << c.textContent << "\n";
+        // Базовые поля
+        file << c.id << "|" << c.parentId << "|" << c.isNullObject << "|" 
+             << c.filepath << "|" << c.timelineStart << "|" << c.timelineEnd 
+             << "|" << c.trackIndex << "|" << c.isText << "|" << c.textContent
+             << "|" << c.volume << "|" << c.posX << "|" << c.posY 
+             << "|" << c.scale << "|" << c.rotation
+             << "|" << c.mediaStart << "|" << c.mediaEnd;
+        
+        // Эффекты (формат: count;name=intensity;name=intensity;...)
+        file << "|" << c.effects.size();
+        for (const auto& fx : c.effects) {
+            file << ";" << fx.name << "=" << fx.intensity;
+        }
+        
+        file << "\n";
     }
 
     file.close();
@@ -160,36 +183,89 @@ bool ProjectManager::LoadProject(const std::string& filepath, ProjectData& outPr
     outProject.Clear();
     outProject.saveFilepath = filepath;
     outProject.projectName = std::filesystem::path(filepath).stem().string();
-    outProject.tracks = { {"Video 1 (Main)", TRACK_VIDEO}, {"Video 2 (Overlay)", TRACK_VIDEO}, {"Audio 1 (Music)", TRACK_AUDIO} };
 
     std::string line;
     std::string currentSection = "";
+    bool tracksLoaded = false;
 
     while (std::getline(file, line)) {
         if (line.empty()) continue;
         if (line[0] == '[') { currentSection = line; continue; }
 
-        if (currentSection == "[MEDIA]") {
-            outProject.mediaFiles.push_back(line);
-        }
-        else if (currentSection == "[CLIPS]") {
-            std::stringstream ss(line);
-            std::string idStr, pIdStr, isNullStr, path, tStartStr, tEndStr, trackIdxStr, isTextStr, textContent;
-            
-            // ПАРСИНГ НОВЫХ ПОЛЕЙ
-            std::getline(ss, idStr, '|');
-            std::getline(ss, pIdStr, '|');
-            std::getline(ss, isNullStr, '|');
-            std::getline(ss, path, '|');
-            std::getline(ss, tStartStr, '|');
-            std::getline(ss, tEndStr, '|');
-            std::getline(ss, trackIdxStr, '|');
-            std::getline(ss, isTextStr, '|');
-            std::getline(ss, textContent);
+        try {
+            if (currentSection == "[TRACKS]") {
+                std::stringstream ss(line);
+                std::string name, typeStr;
+                std::getline(ss, name, '|');
+                std::getline(ss, typeStr);
+                if (!name.empty() && !typeStr.empty()) {
+                    TrackType type = static_cast<TrackType>(std::stoi(typeStr));
+                    outProject.tracks.push_back({name, type});
+                    tracksLoaded = true;
+                }
+            }
+            else if (currentSection == "[MEDIA]") {
+                outProject.mediaFiles.push_back(line);
+            }
+            else if (currentSection == "[CLIPS]") {
+                std::stringstream ss(line);
+                std::string idStr, pIdStr, isNullStr, path, tStartStr, tEndStr, trackIdxStr, isTextStr, textContent;
+                std::string volumeStr, posXStr, posYStr, scaleStr, rotationStr;
+                std::string mediaStartStr, mediaEndStr, effectsBlock;
+                
+                // Базовые поля (обязательные)
+                std::getline(ss, idStr, '|');
+                std::getline(ss, pIdStr, '|');
+                std::getline(ss, isNullStr, '|');
+                std::getline(ss, path, '|');
+                std::getline(ss, tStartStr, '|');
+                std::getline(ss, tEndStr, '|');
+                std::getline(ss, trackIdxStr, '|');
+                std::getline(ss, isTextStr, '|');
+                std::getline(ss, textContent, '|');
 
-            VideoClip clip(path, std::stof(tStartStr), std::stof(tEndStr), std::stoi(trackIdxStr), std::stoi(isTextStr), textContent, std::stoul(idStr), std::stoul(pIdStr), std::stoi(isNullStr));
-            outProject.clips.push_back(clip);
+                if (idStr.empty() || tStartStr.empty() || tEndStr.empty() || trackIdxStr.empty()) continue;
+
+                VideoClip clip(path, std::stof(tStartStr), std::stof(tEndStr), std::stoi(trackIdxStr), 
+                               std::stoi(isTextStr), textContent, std::stoul(idStr), std::stoul(pIdStr), std::stoi(isNullStr));
+
+                // Расширенные поля (опциональные — обратная совместимость со старыми файлами)
+                if (std::getline(ss, volumeStr, '|') && !volumeStr.empty()) clip.volume = std::stof(volumeStr);
+                if (std::getline(ss, posXStr, '|') && !posXStr.empty()) clip.posX = std::stof(posXStr);
+                if (std::getline(ss, posYStr, '|') && !posYStr.empty()) clip.posY = std::stof(posYStr);
+                if (std::getline(ss, scaleStr, '|') && !scaleStr.empty()) clip.scale = std::stof(scaleStr);
+                if (std::getline(ss, rotationStr, '|') && !rotationStr.empty()) clip.rotation = std::stof(rotationStr);
+                if (std::getline(ss, mediaStartStr, '|') && !mediaStartStr.empty()) clip.mediaStart = std::stof(mediaStartStr);
+                if (std::getline(ss, mediaEndStr, '|') && !mediaEndStr.empty()) clip.mediaEnd = std::stof(mediaEndStr);
+                
+                // Эффекты
+                if (std::getline(ss, effectsBlock) && !effectsBlock.empty()) {
+                    std::stringstream efxSS(effectsBlock);
+                    std::string countStr;
+                    std::getline(efxSS, countStr, ';');
+                    int efxCount = std::stoi(countStr);
+                    for (int e = 0; e < efxCount; ++e) {
+                        std::string efxEntry;
+                        if (std::getline(efxSS, efxEntry, ';')) {
+                            size_t eq = efxEntry.find('=');
+                            if (eq != std::string::npos) {
+                                clip.effects.push_back({efxEntry.substr(0, eq), std::stof(efxEntry.substr(eq + 1))});
+                            }
+                        }
+                    }
+                }
+
+                outProject.clips.push_back(clip);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] Failed to parse project line: " << e.what() << " | line: " << line << std::endl;
+            continue; // Пропускаем битую строку вместо краша
         }
+    }
+
+    // Фоллбэк: если треки не были сохранены (старый формат)
+    if (!tracksLoaded) {
+        outProject.tracks = { {"Video 1 (Main)", TRACK_VIDEO}, {"Video 2 (Overlay)", TRACK_VIDEO}, {"Audio 1 (Music)", TRACK_AUDIO} };
     }
 
     RemoveFromRecent(filepath);

@@ -418,11 +418,11 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         draw_list->AddRectFilled(ImVec2(dX1 + 1, dY1 + 2), ImVec2(dX2 - 1, dY2 - 2), clipColor, 4.0f);
         
         char label[64]; 
-        if (clips[i].isNullObject) sprintf(label, "NULL [%u]", clips[i].id);
-        else if (clips[i].isText) sprintf(label, "Text [%u]", clips[i].id);
+        if (clips[i].isNullObject) snprintf(label, sizeof(label), "NULL [%u]", clips[i].id);
+        else if (clips[i].isText) snprintf(label, sizeof(label), "Text [%u]", clips[i].id);
         else {
             std::string shortN = clips[i].filepath.substr(clips[i].filepath.find_last_of("/\\") + 1);
-            sprintf(label, "%s [%u]", shortN.c_str(), clips[i].id);
+            snprintf(label, sizeof(label), "%s [%u]", shortN.c_str(), clips[i].id);
         }
         draw_list->AddText(ImVec2(dX1 + 5, dY1 + 5), IM_COL32(255, 255, 255, 255), label);
         

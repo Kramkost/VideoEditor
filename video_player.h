@@ -26,7 +26,7 @@ public:
     // Передаем список эффектов в отрисовку
     void UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, int viewW, int viewH, double targetTimeSec, bool drawVideo, float posX, float posY, float scale, float rotation, const std::vector<EffectParams>& effects);
     
-    float GetProgress();
+    float GetProgress() { return (durationSec > 0.0) ? static_cast<float>(currentSec / durationSec) : 0.0f; }
     void Seek(float progress);
     void ClearAudio();
     double GetDurationSeconds();

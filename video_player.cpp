@@ -131,14 +131,23 @@ bool VideoPlayer::LoadVideo(const std::string& filepath, SDL_Renderer* renderer)
         wanted_spec.freq = 44100; wanted_spec.format = AUDIO_S16SYS; wanted_spec.channels = 2; wanted_spec.silence = 0; wanted_spec.samples = 1024; wanted_spec.callback = nullptr; 
 
         audioDevice = SDL_OpenAudioDevice(nullptr, 0, &wanted_spec, &spec, 0);
+        if (audioDevice == 0) {
+            std::cerr << "[ERROR] SDL_OpenAudioDevice failed: " << SDL_GetError() << std::endl;
+            // Audio will be silently disabled for this clip
+            avcodec_free_context(&audioCodecCtx);
+            audioCodecCtx = nullptr;
+            av_frame_free(&aFrame);
+            aFrame = nullptr;
+            audioStreamIndex = -1;
+        } else {
+            AVChannelLayout out_ch_layout; av_channel_layout_default(&out_ch_layout, 2);
+            swr_alloc_set_opts2(&swrCtx, &out_ch_layout, AV_SAMPLE_FMT_S16, 44100, &aCodecParams->ch_layout, (AVSampleFormat)aCodecParams->format, aCodecParams->sample_rate, 0, nullptr);
+            swr_init(swrCtx);
 
-        AVChannelLayout out_ch_layout; av_channel_layout_default(&out_ch_layout, 2);
-        swr_alloc_set_opts2(&swrCtx, &out_ch_layout, AV_SAMPLE_FMT_S16, 44100, &aCodecParams->ch_layout, (AVSampleFormat)aCodecParams->format, aCodecParams->sample_rate, 0, nullptr);
-        swr_init(swrCtx);
-
-        audioBuffer = (uint8_t*)av_malloc(192000); 
-        lastQueuedAudioPts = 0.0;
-        SDL_PauseAudioDevice(audioDevice, 0); 
+            audioBuffer = (uint8_t*)av_malloc(192000); 
+            lastQueuedAudioPts = 0.0;
+            SDL_PauseAudioDevice(audioDevice, 0);
+        }
     }
 
     pPacket = av_packet_alloc();
@@ -227,8 +236,8 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
             }
             
             AVFrame* bestFrame = nullptr;
-            size_t bestIndex = -1;
-            for (size_t i = 0; i < videoFrameQueue.size(); ++i) {
+            int bestIndex = -1;
+            for (int i = 0; i < static_cast<int>(videoFrameQueue.size()); ++i) {
                 double pts = videoFrameQueue[i]->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
                 if (pts <= clockTime) {
                     bestFrame = videoFrameQueue[i];
@@ -245,7 +254,7 @@ void VideoPlayer::UpdateAndDraw(SDL_Renderer* renderer, int viewX, int viewY, in
                 currentSec = bestFrame->pts * av_q2d(formatCtx->streams[videoStreamIndex]->time_base);
                 
                 // Очищаем старые кадры из очереди
-                for (size_t i = 0; i <= bestIndex; ++i) {
+                for (int i = 0; i <= bestIndex; ++i) {
                     av_frame_free(&videoFrameQueue[i]);
                 }
                 videoFrameQueue.erase(videoFrameQueue.begin(), videoFrameQueue.begin() + bestIndex + 1);
@@ -313,20 +322,25 @@ void VideoPlayer::Seek(float progress) {
     }
     
     // 2. Решаем, нужно ли делать Seek или можно просто додекодировать вперед
-    bool doSeek = true;
+    bool doHardSeek = true;
     if (videoStreamIndex != -1 && targetSec >= currentSec && (targetSec - currentSec) < 1.5) {
-        doSeek = false;
+        doHardSeek = false;
     }
     
-    if (doSeek) {
+    if (doHardSeek) {
         int64_t target_pts_av = (int64_t)(progress * formatCtx->duration);
         av_seek_frame(formatCtx, -1, target_pts_av, AVSEEK_FLAG_BACKWARD);
+        
+        // ФИКС: Блокируем аудио-устройство чтобы не было race condition с audio callback
+        if (audioDevice) SDL_LockAudioDevice(audioDevice);
         
         if (videoCodecCtx) avcodec_flush_buffers(videoCodecCtx); 
         if (audioCodecCtx) avcodec_flush_buffers(audioCodecCtx);
         if (audioDevice) SDL_ClearQueuedAudio(audioDevice);
         ClearVideoQueue();
         lastQueuedAudioPts = targetSec;
+        
+        if (audioDevice) SDL_UnlockAudioDevice(audioDevice);
     }
     
     // 3. Декодируем вперед до нужного момента

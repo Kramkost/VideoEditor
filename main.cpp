@@ -365,9 +365,9 @@ int main(int argc, char* argv[]) {
                         float mediaProgress = activeClip.mediaStart + localProg * (activeClip.mediaEnd - activeClip.mediaStart);
                         double targetTimeSec = mediaProgress * players[t]->GetDurationSeconds();
 
-                        if (doSeek) players[t]->Seek(targetTimeSec);
+                        if (doSeek) players[t]->Seek(mediaProgress);
                         else if (activeClipIndex != lastActiveClipPerTrack[t]) {
-                            if (std::abs(targetTimeSec - players[t]->GetCurrentSec()) > 0.1) players[t]->Seek(targetTimeSec);
+                            if (std::abs(targetTimeSec - players[t]->GetCurrentSec()) > 0.1) players[t]->Seek(mediaProgress);
                         }
 
                         players[t]->isPlaying = isExporting ? false : isPlaying; 
@@ -388,7 +388,7 @@ int main(int argc, char* argv[]) {
 
             if (isExporting && ffmpegPipe) {
                 SDL_Rect exportRect = { leftPanelW, 0, viewW, WINDOW_VIEW_H };
-                SDL_RenderReadPixels(renderer, &exportRect, SDL_PIXELFORMAT_ARGB8888, exportPixelBuffer.data(), viewW * 4);
+                SDL_RenderReadPixels(renderer, &exportRect, SDL_PIXELFORMAT_BGRA8888, exportPixelBuffer.data(), viewW * 4);
                 fwrite(exportPixelBuffer.data(), 1, exportPixelBuffer.size(), ffmpegPipe);
                 exportFrameCurrent++;
                 
@@ -423,6 +423,7 @@ int main(int argc, char* argv[]) {
         ffmpegPipe = nullptr;
     }
 
+    PluginManager::Shutdown();
     ui.Shutdown(); SDL_DestroyRenderer(renderer); SDL_DestroyWindow(window); SDL_Quit();
     return 0;
 }
