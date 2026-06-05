@@ -24,6 +24,41 @@
 std::vector<std::string> ProjectManager::recentProjects;
 std::string ProjectManager::projectToDelete = "";
 
+static std::string SerializeAnimTrack(const AnimTrack& track) {
+    std::stringstream ss;
+    ss << (track.isAnimated ? 1 : 0) << "," << static_cast<int>(track.easing) << "," << track.keys.size();
+    for (const auto& k : track.keys) {
+        ss << "," << k.time << "=" << k.value;
+    }
+    return ss.str();
+}
+
+static void DeserializeAnimTrack(const std::string& str, AnimTrack& track) {
+    if (str.empty()) return;
+    std::stringstream ss(str);
+    std::string isAnimStr, easingStr, countStr;
+    if (!std::getline(ss, isAnimStr, ',')) return;
+    if (!std::getline(ss, easingStr, ',')) return;
+    if (!std::getline(ss, countStr, ',')) return;
+
+    track.isAnimated = (isAnimStr == "1");
+    track.easing = static_cast<EasingType>(std::stoi(easingStr));
+    int count = std::stoi(countStr);
+    track.keys.clear();
+    for (int i = 0; i < count; ++i) {
+        std::string keyEntry;
+        if (std::getline(ss, keyEntry, ',')) {
+            size_t eq = keyEntry.find('=');
+            if (eq != std::string::npos) {
+                Keyframe k;
+                k.time = std::stof(keyEntry.substr(0, eq));
+                k.value = std::stof(keyEntry.substr(eq + 1));
+                track.keys.push_back(k);
+            }
+        }
+    }
+}
+
 void ProjectManager::Init() { LoadRecentList(); }
 
 void ProjectManager::LoadRecentList() {
@@ -165,6 +200,12 @@ bool ProjectManager::SaveProject(const ProjectData& project) {
             file << ";" << fx.name << "=" << fx.intensity;
         }
         
+        // Анимации
+        file << "|" << SerializeAnimTrack(c.animX);
+        file << "|" << SerializeAnimTrack(c.animY);
+        file << "|" << SerializeAnimTrack(c.animScale);
+        file << "|" << SerializeAnimTrack(c.animRot);
+        
         file << "\n";
     }
 
@@ -239,21 +280,32 @@ bool ProjectManager::LoadProject(const std::string& filepath, ProjectData& outPr
                 if (std::getline(ss, mediaEndStr, '|') && !mediaEndStr.empty()) clip.mediaEnd = std::stof(mediaEndStr);
                 
                 // Эффекты
-                if (std::getline(ss, effectsBlock) && !effectsBlock.empty()) {
+                std::string effectsBlock;
+                if (std::getline(ss, effectsBlock, '|') && !effectsBlock.empty()) {
                     std::stringstream efxSS(effectsBlock);
                     std::string countStr;
-                    std::getline(efxSS, countStr, ';');
-                    int efxCount = std::stoi(countStr);
-                    for (int e = 0; e < efxCount; ++e) {
-                        std::string efxEntry;
-                        if (std::getline(efxSS, efxEntry, ';')) {
-                            size_t eq = efxEntry.find('=');
-                            if (eq != std::string::npos) {
-                                clip.effects.push_back({efxEntry.substr(0, eq), std::stof(efxEntry.substr(eq + 1))});
+                    if (std::getline(efxSS, countStr, ';') && !countStr.empty()) {
+                        try {
+                            int efxCount = std::stoi(countStr);
+                            for (int e = 0; e < efxCount; ++e) {
+                                std::string efxEntry;
+                                if (std::getline(efxSS, efxEntry, ';')) {
+                                    size_t eq = efxEntry.find('=');
+                                    if (eq != std::string::npos) {
+                                        clip.effects.push_back({efxEntry.substr(0, eq), std::stof(efxEntry.substr(eq + 1))});
+                                    }
+                                }
                             }
-                        }
+                        } catch (...) {}
                     }
                 }
+                
+                // Анимации
+                std::string animXStr, animYStr, animScaleStr, animRotStr;
+                if (std::getline(ss, animXStr, '|')) DeserializeAnimTrack(animXStr, clip.animX);
+                if (std::getline(ss, animYStr, '|')) DeserializeAnimTrack(animYStr, clip.animY);
+                if (std::getline(ss, animScaleStr, '|')) DeserializeAnimTrack(animScaleStr, clip.animScale);
+                if (std::getline(ss, animRotStr, '|')) DeserializeAnimTrack(animRotStr, clip.animRot);
 
                 outProject.clips.push_back(clip);
             }

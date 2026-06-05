@@ -3,6 +3,8 @@
 #include <vector>
 #include <cmath> 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 
 #include "export_ui.h"
 #include "imgui.h"
@@ -12,6 +14,7 @@
 
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "ui.h"
 #include "video_player.h"
@@ -21,6 +24,8 @@
 
 extern "C" {
     #include <libavformat/avformat.h>
+    #include <libswresample/swresample.h>
+    #include <libavutil/channel_layout.h>
 }
 
 double GetFileDuration(const std::string& filepath) {
@@ -38,6 +43,217 @@ double GetFileDuration(const std::string& filepath) {
     return duration;
 }
 
+TTF_Font* g_Font = nullptr;
+
+struct WavHeader {
+    char chunkId[4] = {'R', 'I', 'F', 'F'};
+    uint32_t chunkSize;
+    char format[4] = {'W', 'A', 'V', 'E'};
+    char subchunk1Id[4] = {'f', 'm', 't', ' '};
+    uint32_t subchunk1Size = 16;
+    uint16_t audioFormat = 1; // PCM
+    uint16_t numChannels = 2; // Stereo
+    uint32_t sampleRate = 44100;
+    uint32_t byteRate = 44100 * 2 * 2;
+    uint16_t blockAlign = 2 * 2;
+    uint16_t bitsPerSample = 16;
+    char subchunk2Id[4] = {'d', 'a', 't', 'a'};
+    uint32_t subchunk2Size;
+};
+
+bool RenderProjectAudio(const ProjectData& project, double projectDurationSec, const std::string& wavPath) {
+    int sampleRate = 44100;
+    int numChannels = 2;
+    int totalSamples = static_cast<int>(projectDurationSec * sampleRate);
+    if (totalSamples <= 0) return false;
+
+    std::vector<float> mixBuffer(totalSamples * numChannels, 0.0f);
+
+    for (const auto& clip : project.clips) {
+        if (clip.isText || clip.isNullObject || clip.filepath.empty() || clip.volume <= 0.001f) {
+            continue;
+        }
+
+        AVFormatContext* fmtCtx = nullptr;
+        if (avformat_open_input(&fmtCtx, clip.filepath.c_str(), nullptr, nullptr) != 0) {
+            continue;
+        }
+
+        if (avformat_find_stream_info(fmtCtx, nullptr) < 0) {
+            avformat_close_input(&fmtCtx);
+            continue;
+        }
+
+        int audioIdx = -1;
+        for (unsigned int i = 0; i < fmtCtx->nb_streams; ++i) {
+            if (fmtCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+                audioIdx = i;
+                break;
+            }
+        }
+
+        if (audioIdx == -1) {
+            avformat_close_input(&fmtCtx);
+            continue;
+        }
+
+        AVCodecParameters* codecParams = fmtCtx->streams[audioIdx]->codecpar;
+        const AVCodec* decoder = avcodec_find_decoder(codecParams->codec_id);
+        if (!decoder) {
+            avformat_close_input(&fmtCtx);
+            continue;
+        }
+
+        AVCodecContext* codecCtx = avcodec_alloc_context3(decoder);
+        if (!codecCtx) {
+            avformat_close_input(&fmtCtx);
+            continue;
+        }
+
+        avcodec_parameters_to_context(codecCtx, codecParams);
+        if (avcodec_open2(codecCtx, decoder, nullptr) < 0) {
+            avcodec_free_context(&codecCtx);
+            avformat_close_input(&fmtCtx);
+            continue;
+        }
+
+        double fileDuration = 0.0;
+        if (fmtCtx->duration > 0) {
+            fileDuration = (double)fmtCtx->duration / AV_TIME_BASE;
+        }
+
+        float timelineStartSec = clip.timelineStart * projectDurationSec;
+        float timelineEndSec = clip.timelineEnd * projectDurationSec;
+        float timelineDuration = timelineEndSec - timelineStartSec;
+
+        float mediaStartSec = clip.mediaStart * fileDuration;
+        float mediaEndSec = clip.mediaEnd * fileDuration;
+        float mediaDuration = mediaEndSec - mediaStartSec;
+
+        if (timelineDuration <= 0.01f || mediaDuration <= 0.01f) {
+            avcodec_free_context(&codecCtx);
+            avformat_close_input(&fmtCtx);
+            continue;
+        }
+
+        double speed = mediaDuration / timelineDuration;
+
+        SwrContext* swr = nullptr;
+        AVChannelLayout out_ch_layout;
+        av_channel_layout_default(&out_ch_layout, 2);
+
+        int targetSampleRate = 44100;
+        int sourceSampleRate = static_cast<int>(codecCtx->sample_rate * speed);
+
+        swr_alloc_set_opts2(&swr,
+                            &out_ch_layout, AV_SAMPLE_FMT_FLT, targetSampleRate,
+                            &codecParams->ch_layout, codecCtx->sample_fmt, codecCtx->sample_rate,
+                            0, nullptr);
+        if (!swr || swr_init(swr) < 0) {
+            if (swr) swr_free(&swr);
+            avcodec_free_context(&codecCtx);
+            avformat_close_input(&fmtCtx);
+            continue;
+        }
+
+        int64_t seek_target = static_cast<int64_t>(mediaStartSec * AV_TIME_BASE);
+        av_seek_frame(fmtCtx, -1, seek_target, AVSEEK_FLAG_BACKWARD);
+        avcodec_flush_buffers(codecCtx);
+
+        AVPacket* packet = av_packet_alloc();
+        AVFrame* frame = av_frame_alloc();
+
+        int max_out_samples = 4096;
+        float* resampleBuf = nullptr;
+        av_samples_alloc((uint8_t**)&resampleBuf, nullptr, 2, max_out_samples, AV_SAMPLE_FMT_FLT, 0);
+
+        int timelineStartSample = static_cast<int>(timelineStartSec * sampleRate);
+        int timelineEndSample = static_cast<int>(timelineEndSec * sampleRate);
+        int currentOutSample = timelineStartSample;
+
+        bool done = false;
+        while (!done && av_read_frame(fmtCtx, packet) >= 0) {
+            if (packet->stream_index == audioIdx) {
+                double ptsSec = packet->pts * av_q2d(fmtCtx->streams[audioIdx]->time_base);
+                if (ptsSec > mediaEndSec) {
+                    av_packet_unref(packet);
+                    break;
+                }
+
+                if (avcodec_send_packet(codecCtx, packet) == 0) {
+                    while (avcodec_receive_frame(codecCtx, frame) == 0) {
+                        double framePts = frame->pts * av_q2d(fmtCtx->streams[audioIdx]->time_base);
+                        if (framePts < mediaStartSec - 0.2) {
+                            continue;
+                        }
+
+                        int out_count = swr_get_out_samples(swr, frame->nb_samples);
+                        if (out_count > max_out_samples) {
+                            max_out_samples = out_count + 1024;
+                            av_freep(&resampleBuf);
+                            av_samples_alloc((uint8_t**)&resampleBuf, nullptr, 2, max_out_samples, AV_SAMPLE_FMT_FLT, 0);
+                        }
+
+                        int converted = swr_convert(swr, (uint8_t**)&resampleBuf, max_out_samples,
+                                                    (const uint8_t**)frame->data, frame->nb_samples);
+                        if (converted > 0) {
+                            for (int i = 0; i < converted; ++i) {
+                                int outIdx = currentOutSample + i;
+                                if (outIdx >= timelineEndSample || outIdx >= totalSamples) {
+                                    done = true;
+                                    break;
+                                }
+                                mixBuffer[outIdx * 2]     += resampleBuf[i * 2] * clip.volume;
+                                mixBuffer[outIdx * 2 + 1] += resampleBuf[i * 2 + 1] * clip.volume;
+                            }
+                            currentOutSample += converted;
+                        }
+                    }
+                }
+            }
+            av_packet_unref(packet);
+        }
+
+        int converted = swr_convert(swr, (uint8_t**)&resampleBuf, max_out_samples, nullptr, 0);
+        if (converted > 0) {
+            for (int i = 0; i < converted; ++i) {
+                int outIdx = currentOutSample + i;
+                if (outIdx >= timelineEndSample || outIdx >= totalSamples) break;
+                mixBuffer[outIdx * 2]     += resampleBuf[i * 2] * clip.volume;
+                mixBuffer[outIdx * 2 + 1] += resampleBuf[i * 2 + 1] * clip.volume;
+            }
+        }
+
+        av_freep(&resampleBuf);
+        av_frame_free(&frame);
+        av_packet_free(&packet);
+        swr_free(&swr);
+        avcodec_free_context(&codecCtx);
+        avformat_close_input(&fmtCtx);
+    }
+
+    std::vector<int16_t> pcmData(totalSamples * numChannels);
+    for (int i = 0; i < totalSamples * numChannels; ++i) {
+        float val = mixBuffer[i];
+        if (val > 1.0f) val = 1.0f;
+        if (val < -1.0f) val = -1.0f;
+        pcmData[i] = static_cast<int16_t>(val * 32767.0f);
+    }
+
+    FILE* f = fopen(wavPath.c_str(), "wb");
+    if (!f) return false;
+
+    WavHeader header;
+    header.subchunk2Size = totalSamples * numChannels * 2;
+    header.chunkSize = 36 + header.subchunk2Size;
+
+    fwrite(&header, 1, sizeof(header), f);
+    fwrite(pcmData.data(), 1, pcmData.size() * 2, f);
+    fclose(f);
+
+    return true;
+}
+
 #define AUTOSAVE_INTERVAL_SEC 60.0f
 
 const int WINDOW_VIEW_W = 1280;
@@ -48,6 +264,28 @@ int main(int argc, char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0) {
         LOG_ERROR("Failed to initialize SDL.");
         return -1; 
+    }
+    if (TTF_Init() < 0) {
+        LOG_ERROR("Failed to initialize SDL_ttf: %s", TTF_GetError());
+    }
+
+    std::vector<std::string> fontPaths = {
+        "/usr/share/fonts/google-carlito-fonts/Carlito-Regular.ttf",
+        "/usr/share/fonts/google-droid-sans-fonts/DroidSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "arial.ttf"
+    };
+    for (const auto& path : fontPaths) {
+        g_Font = TTF_OpenFont(path.c_str(), 64);
+        if (g_Font) {
+            LOG_DEBUG("Loaded font: %s", path.c_str());
+            break;
+        }
+    }
+    if (!g_Font) {
+        LOG_ERROR("Failed to load any font!");
     }
 
     SDL_Window* window = SDL_CreateWindow("Titan Video Editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_VIEW_W, WINDOW_VIEW_H + EXTRA_UI_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
@@ -86,6 +324,7 @@ int main(int argc, char* argv[]) {
     int exportFrameTotal = 0;
     FILE* ffmpegPipe = nullptr;
     std::vector<uint8_t> exportPixelBuffer;
+    SDL_Texture* exportTargetTexture = nullptr;
 
     float autoSaveTimer = 0.0f;
     std::string autoSavePath = "project_autosave.titansave";
@@ -205,17 +444,27 @@ int main(int argc, char* argv[]) {
                 if (exportFrameTotal == 0) isExporting = false; 
                 
                 if (isExporting) {
-                    exportPixelBuffer.resize(viewW * WINDOW_VIEW_H * 4); 
-                    std::string cmd = "ffmpeg -y -f rawvideo -pix_fmt bgra -s " + std::to_string(viewW) + "x" + std::to_string(WINDOW_VIEW_H) + 
-                                      " -r " + std::to_string(exportMenu.fps) + " -i - -vf scale=" + std::to_string(exportMenu.width) + ":" + std::to_string(exportMenu.height) + 
-                                      " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p \"" + exportMenu.outputPath + "\"";
+                    RenderProjectAudio(currentProject, maxDurationSec, "temp_audio.wav");
+
+                    exportTargetTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, exportMenu.width, exportMenu.height);
+                    exportPixelBuffer.resize(exportMenu.width * exportMenu.height * 4); 
+
+                    std::string cmd = "ffmpeg -y -f rawvideo -pix_fmt bgra -s " + std::to_string(exportMenu.width) + "x" + std::to_string(exportMenu.height) + 
+                                      " -r " + std::to_string(exportMenu.fps) + " -i - -i temp_audio.wav -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 192k -pix_fmt yuv420p \"" + exportMenu.outputPath + "\"";
                     
                     #ifdef _WIN32
                     ffmpegPipe = _popen(cmd.c_str(), "wb");
                     #else
                     ffmpegPipe = popen(cmd.c_str(), "w");
                     #endif
-                    if (!ffmpegPipe) isExporting = false;
+                    if (!ffmpegPipe) {
+                        isExporting = false;
+                        if (exportTargetTexture) {
+                            SDL_DestroyTexture(exportTargetTexture);
+                            exportTargetTexture = nullptr;
+                        }
+                        std::filesystem::remove("temp_audio.wav");
+                    }
                 }
             }
 
@@ -325,6 +574,26 @@ int main(int argc, char* argv[]) {
                 }
             }
 
+            int previewW = viewW;
+            int previewH = WINDOW_VIEW_H;
+
+            int drawViewX = leftPanelW;
+            int drawViewY = 0;
+            int drawViewW = previewW;
+            int drawViewH = previewH;
+            
+            if (isExporting) {
+                drawViewX = 0;
+                drawViewY = 0;
+                drawViewW = exportMenu.width;
+                drawViewH = exportMenu.height;
+                if (exportTargetTexture) {
+                    SDL_SetRenderTarget(renderer, exportTargetTexture);
+                }
+            } else {
+                SDL_SetRenderTarget(renderer, nullptr);
+            }
+
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
             
@@ -347,9 +616,11 @@ int main(int argc, char* argv[]) {
                 if (activeClipIndex != -1) {
                     VideoClip& activeClip = currentProject.clips[activeClipIndex];
                     
-                    // ДЕКОМПОЗИЦИЯ ФИНАЛЬНЫХ ЗНАЧЕНИЙ (Магия Матриц)
                     float finalX, finalY, finalRot, finalScale;
                     activeClip.globalTransform.Decompose(finalX, finalY, finalRot, finalScale);
+
+                    float drawX = isExporting ? finalX * ((float)exportMenu.width / previewW) : finalX;
+                    float drawY = isExporting ? finalY * ((float)exportMenu.height / previewH) : finalY;
 
                     if (activeClip.isNullObject) {
                         players[t]->isPlaying = false;
@@ -359,16 +630,38 @@ int main(int argc, char* argv[]) {
                         players[t]->isPlaying = false;
                         if (lastActiveClipPerTrack[t] != -1) players[t]->ClearAudio(); 
                         
-                        // РЕНДЕР ТЕКСТА (ПЕРЕНЕСЕНО СЮДА)
-                        // В ImGui нельзя крутить текст, поэтому пока просто двигаем и скейлим
-                        float fontSize = 64.0f * finalScale; 
-                        ImVec2 textSize = ImGui::CalcTextSize(activeClip.textContent.c_str());
-                        float screenX = leftPanelW + (viewW) / 2.0f + finalX - (textSize.x * finalScale) / 2.0f;
-                        float screenY = WINDOW_VIEW_H / 2.0f + finalY - (textSize.y * finalScale) / 2.0f;
-                        
-                        ImDrawList* bg_draw_list = ImGui::GetBackgroundDrawList();
-                        bg_draw_list->AddText(ImGui::GetFont(), fontSize, ImVec2(screenX + 2, screenY + 2), IM_COL32(0,0,0,255), activeClip.textContent.c_str());
-                        bg_draw_list->AddText(ImGui::GetFont(), fontSize, ImVec2(screenX, screenY), IM_COL32(255,255,255,255), activeClip.textContent.c_str());
+                        if (g_Font) {
+                            int textW = 0, textH = 0;
+                            SDL_Surface* textSurf = TTF_RenderUTF8_Blended(g_Font, activeClip.textContent.c_str(), {255, 255, 255, 255});
+                            if (textSurf) {
+                                SDL_Texture* textTex = SDL_CreateTextureFromSurface(renderer, textSurf);
+                                if (textTex) {
+                                    SDL_QueryTexture(textTex, nullptr, nullptr, &textW, &textH);
+                                    float textScaleFactor = (float)drawViewH / 720.0f;
+                                    float finalW = textW * finalScale * textScaleFactor;
+                                    float finalH = textH * finalScale * textScaleFactor;
+                                    
+                                    float dstX = drawViewX + (drawViewW) / 2.0f + drawX - finalW / 2.0f;
+                                    float dstY = drawViewY + (drawViewH) / 2.0f + drawY - finalH / 2.0f;
+                                    SDL_Rect rect = { (int)dstX, (int)dstY, (int)finalW, (int)finalH };
+                                    
+                                    SDL_Surface* shadowSurf = TTF_RenderUTF8_Blended(g_Font, activeClip.textContent.c_str(), {0, 0, 0, 255});
+                                    if (shadowSurf) {
+                                        SDL_Texture* shadowTex = SDL_CreateTextureFromSurface(renderer, shadowSurf);
+                                        if (shadowTex) {
+                                            SDL_Rect shadowRect = { rect.x + 2, rect.y + 2, rect.w, rect.h };
+                                            SDL_RenderCopyEx(renderer, shadowTex, nullptr, &shadowRect, (double)finalRot, nullptr, SDL_FLIP_NONE);
+                                            SDL_DestroyTexture(shadowTex);
+                                        }
+                                        SDL_FreeSurface(shadowSurf);
+                                    }
+                                    
+                                    SDL_RenderCopyEx(renderer, textTex, nullptr, &rect, (double)finalRot, nullptr, SDL_FLIP_NONE);
+                                    SDL_DestroyTexture(textTex);
+                                }
+                                SDL_FreeSurface(textSurf);
+                            }
+                        }
                     } 
                     else {
                         if (players[t]->loadedFilepath != activeClip.filepath) players[t]->LoadVideo(activeClip.filepath, renderer);
@@ -389,9 +682,8 @@ int main(int argc, char* argv[]) {
                         players[t]->isPlaying = isExporting ? false : isPlaying; 
                         players[t]->currentVolume = activeClip.volume;
 
-                        // ОТПРАВЛЯЕМ ГЛОБАЛЬНЫЕ КООРДИНАТЫ В ПЛЕЕР
-                        players[t]->UpdateAndDraw(renderer, leftPanelW, 0, viewW, WINDOW_VIEW_H, targetTimeSec, isVideoTrack, 
-                                                  finalX, finalY, finalScale, finalRot, activeClip.effects); 
+                        players[t]->UpdateAndDraw(renderer, drawViewX, drawViewY, drawViewW, drawViewH, targetTimeSec, isVideoTrack, 
+                                                  drawX, drawY, finalScale, finalRot, activeClip.effects); 
                     }
                 } 
                 else {
@@ -402,11 +694,14 @@ int main(int argc, char* argv[]) {
             }
 
             if (isExporting && ffmpegPipe) {
-                SDL_Rect exportRect = { leftPanelW, 0, viewW, WINDOW_VIEW_H };
-                SDL_RenderReadPixels(renderer, &exportRect, SDL_PIXELFORMAT_BGRA8888, exportPixelBuffer.data(), viewW * 4);
+                SDL_RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_BGRA8888, exportPixelBuffer.data(), exportMenu.width * 4);
                 fwrite(exportPixelBuffer.data(), 1, exportPixelBuffer.size(), ffmpegPipe);
                 exportFrameCurrent++;
                 
+                SDL_SetRenderTarget(renderer, nullptr);
+                SDL_SetRenderDrawColor(renderer, 25, 25, 30, 255);
+                SDL_RenderClear(renderer);
+
                 ui.DrawSurface(renderer);
                 SDL_SetRenderDrawColor(renderer, 50, 200, 50, 255);
                 SDL_Rect progressRect = { 0, WINDOW_VIEW_H + EXTRA_UI_HEIGHT - 10, static_cast<int>(static_cast<float>(exportFrameCurrent) / exportFrameTotal * WINDOW_VIEW_W), 10 };
@@ -419,7 +714,14 @@ int main(int argc, char* argv[]) {
                     #else
                        pclose(ffmpegPipe);
                     #endif
-                    ffmpegPipe = nullptr; currentProgress = 0.0f; 
+                    ffmpegPipe = nullptr;
+                    currentProgress = 0.0f; 
+                    
+                    if (exportTargetTexture) {
+                        SDL_DestroyTexture(exportTargetTexture);
+                        exportTargetTexture = nullptr;
+                    }
+                    std::filesystem::remove("temp_audio.wav");
                 }
             } else {
                 exportMenu.Draw(&showExportMenu);
@@ -437,6 +739,17 @@ int main(int argc, char* argv[]) {
         #endif
         ffmpegPipe = nullptr;
     }
+    if (exportTargetTexture) {
+        SDL_DestroyTexture(exportTargetTexture);
+        exportTargetTexture = nullptr;
+    }
+    std::filesystem::remove("temp_audio.wav");
+
+    if (g_Font) {
+        TTF_CloseFont(g_Font);
+        g_Font = nullptr;
+    }
+    TTF_Quit();
 
     PluginManager::Shutdown();
     ui.Shutdown(); SDL_DestroyRenderer(renderer); SDL_DestroyWindow(window); SDL_Quit();
