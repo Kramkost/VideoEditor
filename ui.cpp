@@ -80,7 +80,8 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
                               std::vector<VideoClip>& clips, int& selectedClipIndex,
                               bool& showExport, std::vector<TimelineTrack>& tracks,
                               bool& doAddText, bool& effectChanged,
-                              std::vector<std::string>& projectFiles) {
+                              std::vector<std::string>& projectFiles,
+                              double maxDurationSec, bool undoStackEmpty, bool redoStackEmpty) {
     std::string selectedFile = "";
     
     ImGui_ImplSDLRenderer2_NewFrame();
@@ -95,6 +96,11 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             ImGui::Separator();
             if (ImGui::MenuItem("Settings")) showSettings = true;
             if (ImGui::MenuItem("Export")) showExport = true;
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Edit")) {
+            if (ImGui::MenuItem("Undo", "Ctrl+Z", false, !undoStackEmpty)) triggerUndo = true;
+            if (ImGui::MenuItem("Redo", "Ctrl+Y", false, !redoStackEmpty)) triggerRedo = true;
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Workspace")) {
@@ -145,6 +151,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         for (const auto& plugin : availablePlugins) {
             if (ImGui::Button(plugin.c_str(), ImVec2(-1, 35))) {
                 if (selectedClipIndex >= 0 && selectedClipIndex < clips.size() && !clips[selectedClipIndex].isText) {
+                    triggerUndoSave = true;
                     clips[selectedClipIndex].effects.push_back({plugin, 1.0f}); effectChanged = true;
                 }
             }
@@ -179,11 +186,17 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             // --- HIERARCHY SYSTEM ---
             ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f), "Hierarchy");
             if (ImGui::BeginCombo("Parent", clips[selectedClipIndex].parentId == 0 ? "None" : std::to_string(clips[selectedClipIndex].parentId).c_str())) {
-                if (ImGui::Selectable("None")) clips[selectedClipIndex].parentId = 0;
+                if (ImGui::Selectable("None")) {
+                    triggerUndoSave = true;
+                    clips[selectedClipIndex].parentId = 0;
+                }
                 for (const auto& c : clips) {
                     if (c.id != clips[selectedClipIndex].id) {
                         std::string label = (c.isNullObject ? "Null ID:" : (c.isText ? "Text ID:" : "Media ID:")) + std::to_string(c.id);
-                        if (ImGui::Selectable(label.c_str())) clips[selectedClipIndex].parentId = c.id;
+                        if (ImGui::Selectable(label.c_str())) {
+                            triggerUndoSave = true;
+                            clips[selectedClipIndex].parentId = c.id;
+                        }
                     }
                 }
                 ImGui::EndCombo();
@@ -193,7 +206,12 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             if (clips[selectedClipIndex].isText && !clips[selectedClipIndex].isNullObject) {
                 ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Text Content");
                 char textBuf[256]; strncpy(textBuf, clips[selectedClipIndex].textContent.c_str(), sizeof(textBuf));
-                if (ImGui::InputTextMultiline("##text", textBuf, sizeof(textBuf), ImVec2(-1, 50))) clips[selectedClipIndex].textContent = std::string(textBuf);
+                if (ImGui::InputTextMultiline("##text", textBuf, sizeof(textBuf), ImVec2(-1, 50))) {
+                    clips[selectedClipIndex].textContent = std::string(textBuf);
+                }
+                if (ImGui::IsItemActivated()) {
+                    triggerUndoSave = true;
+                }
                 ImGui::Spacing();
             }
 
@@ -208,6 +226,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
                 ImGui::PushStyleColor(ImGuiCol_Button, btnColor);
                 
                 if (ImGui::Button(track.isAnimated ? " O " : " - ")) {
+                    triggerUndoSave = true;
                     track.isAnimated = !track.isAnimated;
                     if (track.isAnimated) track.AddOrUpdateKey(localTime, baseVal); else track.keys.clear();
                 }
@@ -215,6 +234,9 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
                 
                 float val = track.GetValue(localTime, baseVal);
                 bool valChanged = ImGui::DragFloat(label, &val, speed, minV, maxV);
+                if (ImGui::IsItemActivated()) {
+                    triggerUndoSave = true;
+                }
                 
                 bool hasKeyHere = false;
                 int keyIndex = -1;
@@ -226,6 +248,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
                     ImGui::SameLine();
                     ImGui::PushStyleColor(ImGuiCol_Button, hasKeyHere ? ImVec4(0.8f, 0.2f, 0.2f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
                     if (ImGui::Button(hasKeyHere ? " -Key " : " +Key ")) {
+                        triggerUndoSave = true;
                         if (hasKeyHere) track.keys.erase(track.keys.begin() + keyIndex);
                         else track.AddOrUpdateKey(localTime, val);
                     }
@@ -262,6 +285,9 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
                         ImGui::PushID(static_cast<int>(i));
                         ImGui::InvisibleButton("##keyhitbox", ImVec2(s * 2, height));
                         
+                        if (ImGui::IsItemActivated()) {
+                            triggerUndoSave = true;
+                        }
                         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
                             float deltaT = ImGui::GetIO().MouseDelta.x / width;
                             track.keys[i].time = std::clamp(track.keys[i].time + deltaT, 0.0f, 1.0f);
@@ -270,6 +296,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
                             std::sort(track.keys.begin(), track.keys.end(), [](const Keyframe& a, const Keyframe& b){ return a.time < b.time; });
                         }
                         if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1)) {
+                            triggerUndoSave = true;
                             track.keys.erase(track.keys.begin() + i);
                             ImGui::PopID();
                             break; 
@@ -288,7 +315,10 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             ImGui::Spacing();
             if (!clips[selectedClipIndex].isText && !clips[selectedClipIndex].isNullObject) {
                 ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Audio");
-                ImGui::SliderFloat("Volume", &clips[selectedClipIndex].volume, 0.0f, 1.0f, "%.2f");
+                if (ImGui::SliderFloat("Volume", &clips[selectedClipIndex].volume, 0.0f, 1.0f, "%.2f")) {}
+                if (ImGui::IsItemActivated()) {
+                    triggerUndoSave = true;
+                }
             }
         } else {
             ImGui::TextDisabled("Select a clip to edit properties.");
@@ -305,11 +335,11 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             ImGui::InputText("##presetName", presetName, sizeof(presetName));
             ImGui::SameLine();
             if (ImGui::Button("Save Preset")) SaveEffectPreset(presetName, clips[selectedClipIndex].effects);
-            if (ImGui::Button("Load Preset")) { LoadEffectPreset(presetName, clips[selectedClipIndex].effects); effectChanged = true; }
+            if (ImGui::Button("Load Preset")) { triggerUndoSave = true; LoadEffectPreset(presetName, clips[selectedClipIndex].effects); effectChanged = true; }
             ImGui::Separator();
             if (ImGui::BeginCombo("Add Effect", "Select...")) {
                 for (const auto& plugin : PluginManager::GetAvailablePlugins()) {
-                    if (ImGui::Selectable(plugin.c_str())) { clips[selectedClipIndex].effects.push_back({plugin, 1.0f}); effectChanged = true; }
+                    if (ImGui::Selectable(plugin.c_str())) { triggerUndoSave = true; clips[selectedClipIndex].effects.push_back({plugin, 1.0f}); effectChanged = true; }
                 }
                 ImGui::EndCombo();
             }
@@ -317,8 +347,9 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             for (int e = 0; e < clips[selectedClipIndex].effects.size(); ++e) {
                 auto& fx = clips[selectedClipIndex].effects[e];
                 ImGui::PushID(e); ImGui::Text("%s", fx.name.c_str()); ImGui::SameLine(ImGui::GetWindowWidth() - 40);
-                if (ImGui::Button("X")) { clips[selectedClipIndex].effects.erase(clips[selectedClipIndex].effects.begin() + e); effectChanged = true; ImGui::PopID(); break; }
+                if (ImGui::Button("X")) { triggerUndoSave = true; clips[selectedClipIndex].effects.erase(clips[selectedClipIndex].effects.begin() + e); effectChanged = true; ImGui::PopID(); break; }
                 if (ImGui::SliderFloat("Intensity", &fx.intensity, 0.0f, 1.0f)) effectChanged = true;
+                if (ImGui::IsItemActivated()) { triggerUndoSave = true; }
                 ImGui::PopID(); ImGui::Spacing();
             }
         } else ImGui::TextDisabled("Select a video clip to edit effects.");
@@ -334,7 +365,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::SameLine(); 
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.6f, 0.2f, 1.0f)); 
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.7f, 0.3f, 1.0f)); 
-    if (ImGui::Button("+ ADD TEXT", ImVec2(100, 30))) { doAddText = true; } 
+    if (ImGui::Button("+ ADD TEXT", ImVec2(100, 30))) { triggerUndoSave = true; doAddText = true; } 
     ImGui::PopStyleColor(2);
     ImGui::SameLine();
     
@@ -342,6 +373,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.8f, 1.0f)); 
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.3f, 0.9f, 1.0f)); 
     if (ImGui::Button("+ ADD NULL", ImVec2(100, 30))) {
+        triggerUndoSave = true;
         float start = progress;
         float end = std::clamp(start + 0.15f, 0.0f, 1.0f);
         if (clips.empty()) { start = 0.0f; end = 1.0f; }
@@ -358,6 +390,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::PopStyleColor();
     ImGui::SameLine(); 
     if (ImGui::Button("CUT", ImVec2(60, 30))) {
+        triggerUndoSave = true;
         if (TrackManager::SplitClip(clips, selectedClipIndex, progress)) {
             selectedClipIndex++;
         }
@@ -368,6 +401,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
     if (ImGui::Button("DELETE", ImVec2(70, 30))) {
+        triggerUndoSave = true;
         clips.erase(clips.begin() + selectedClipIndex);
         selectedClipIndex = -1;
     }
@@ -401,9 +435,11 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     float baseTrackWidth = ImGui::GetWindowWidth() - headerW - 30.0f; // viewport estimation
     if (baseTrackWidth < 200.0f) baseTrackWidth = 200.0f;
     float trackWidth = baseTrackWidth * timelineZoom;
-    float trackHeight = 40.0f; 
+    float trackHeight = 40.0f;
     float trackSpacing = 4.0f;
-    float totalTimelineHeight = (tracks.size() + 1) * (trackHeight + trackSpacing);
+    float rulerHeight = 24.0f;
+    float trackStartY = p.y + rulerHeight + trackSpacing;
+    float totalTimelineHeight = rulerHeight + trackSpacing + (tracks.size() + 1) * (trackHeight + trackSpacing);
     
     // Apply zoom adjust scroll positioning towards mouse cursor
     static float prevZoom = 1.0f;
@@ -421,9 +457,50 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::Dummy(ImVec2(headerW + trackWidth, totalTimelineHeight));
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+    // 0. Draw Timeline Ruler (шкала времени)
+    draw_list->AddRectFilled(ImVec2(p.x + headerW, p.y), ImVec2(p.x + headerW + trackWidth, p.y + rulerHeight), IM_COL32(30, 30, 32, 255));
+    draw_list->AddLine(ImVec2(p.x + headerW, p.y + rulerHeight), ImVec2(p.x + headerW + trackWidth, p.y + rulerHeight), IM_COL32(60, 60, 64, 255), 1.0f);
+    
+    double pixelsPerSecond = trackWidth / maxDurationSec;
+    double intervals[] = { 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0 };
+    double majorInterval = 10.0;
+    for (double intv : intervals) {
+        if (intv * pixelsPerSecond >= 80.0f) {
+            majorInterval = intv;
+            break;
+        }
+    }
+    double minorInterval = majorInterval / 5.0;
+
+    double startTimeSec = (scrollX) / pixelsPerSecond;
+    double endTimeSec = (scrollX + ImGui::GetWindowWidth()) / pixelsPerSecond;
+    startTimeSec = std::max(0.0, std::floor(startTimeSec / minorInterval) * minorInterval);
+    endTimeSec = std::min(maxDurationSec, std::ceil(endTimeSec / minorInterval) * minorInterval);
+
+    for (double t = startTimeSec; t <= endTimeSec; t += minorInterval) {
+        float x = p.x + headerW + (t / maxDurationSec) * trackWidth;
+        bool isMajor = (std::fmod(t + minorInterval * 0.05, majorInterval) < minorInterval * 0.1);
+        if (isMajor) {
+            draw_list->AddLine(ImVec2(x, p.y), ImVec2(x, p.y + rulerHeight), IM_COL32(150, 150, 150, 255), 1.0f);
+            char timeStr[32];
+            if (majorInterval < 1.0) {
+                snprintf(timeStr, sizeof(timeStr), "%.1fs", t);
+            } else if (t < 60.0) {
+                snprintf(timeStr, sizeof(timeStr), "%.0fs", t);
+            } else {
+                int m = static_cast<int>(t) / 60;
+                int s = static_cast<int>(t) % 60;
+                snprintf(timeStr, sizeof(timeStr), "%d:%02d", m, s);
+            }
+            draw_list->AddText(ImVec2(x + 4.0f, p.y + 2.0f), IM_COL32(200, 200, 200, 255), timeStr);
+        } else {
+            draw_list->AddLine(ImVec2(x, p.y + rulerHeight * 0.6f), ImVec2(x, p.y + rulerHeight), IM_COL32(100, 100, 100, 150), 1.0f);
+        }
+    }
+
     // 1. Draw track backgrounds (scroll horizontally)
     for (int t = 0; t < tracks.size(); ++t) {
-        float currentY = p.y + t * (trackHeight + trackSpacing);
+        float currentY = trackStartY + t * (trackHeight + trackSpacing);
         ImU32 bgColor = (tracks[t].type == TRACK_VIDEO) ? IM_COL32(40, 40, 45, 255) : IM_COL32(35, 45, 40, 255);
         draw_list->AddRectFilled(ImVec2(p.x + headerW, currentY), ImVec2(p.x + headerW + trackWidth, currentY + trackHeight), bgColor);
     }
@@ -432,7 +509,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     for (int i = 0; i < clips.size(); i++) {
         int t = clips[i].trackIndex; if (t < 0 || t >= tracks.size()) continue; 
 
-        float currentY = p.y + t * (trackHeight + trackSpacing);
+        float currentY = trackStartY + t * (trackHeight + trackSpacing);
         float x1 = p.x + headerW + (clips[i].timelineStart * trackWidth);
         float x2 = p.x + headerW + (clips[i].timelineEnd * trackWidth);
         
@@ -470,6 +547,9 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         ImGui::SetCursorScreenPos(ImVec2(x1 - 4, currentY));
         ImGui::InvisibleButton((std::string("left_") + std::to_string(i)).c_str(), ImVec2(8, trackHeight));
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        if (ImGui::IsItemActivated()) {
+            triggerUndoSave = true;
+        }
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
             clips[i].isInteracting = true;
             float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
@@ -480,6 +560,9 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         ImGui::SetCursorScreenPos(ImVec2(x2 - 4, currentY));
         ImGui::InvisibleButton((std::string("right_") + std::to_string(i)).c_str(), ImVec2(8, trackHeight));
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        if (ImGui::IsItemActivated()) {
+            triggerUndoSave = true;
+        }
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
             clips[i].isInteracting = true;
             float delta = ImGui::GetIO().MouseDelta.x / trackWidth;
@@ -490,6 +573,9 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         ImGui::SetCursorScreenPos(ImVec2(x1 + 4, currentY));
         ImGui::InvisibleButton((std::string("body_") + std::to_string(i)).c_str(), ImVec2(x2 - x1 - 8, trackHeight));
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        if (ImGui::IsItemActivated()) {
+            triggerUndoSave = true;
+        }
         if (ImGui::IsItemClicked()) selectedClipIndex = i;
         
         // Right click Context Menu
@@ -500,17 +586,20 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
         
         if (ImGui::BeginPopup(("clip_context_" + std::to_string(i)).c_str())) {
             if (ImGui::MenuItem("Delete Clip")) {
+                triggerUndoSave = true;
                 clips.erase(clips.begin() + i);
                 selectedClipIndex = -1;
                 ImGui::EndPopup();
                 continue; 
             }
             if (ImGui::MenuItem("Split Clip Here")) {
+                triggerUndoSave = true;
                 if (TrackManager::SplitClip(clips, i, progress)) {
                     selectedClipIndex = i + 1;
                 }
             }
             if (ImGui::MenuItem("Reset Local Transform")) {
+                triggerUndoSave = true;
                 clips[i].posX = 0.0f;
                 clips[i].posY = 0.0f;
                 clips[i].scale = 1.0f;
@@ -523,7 +612,7 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
             clips[i].isInteracting = true; 
             float deltaX = ImGui::GetIO().MouseDelta.x / trackWidth;
             float mouse_y = ImGui::GetMousePos().y;
-            int hoveredTrack = (mouse_y - p.y) / (trackHeight + trackSpacing);
+            int hoveredTrack = (mouse_y - trackStartY) / (trackHeight + trackSpacing);
             TrackManager::DragBody(clips, i, deltaX, hoveredTrack, tracks, trackWidth, progress);
             progress = clips[i].timelineStart; doSeek = true;
         }
@@ -531,14 +620,17 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
 
     // 3. Draw headers pinned horizontally (drawn after clips so clips don't overlap headers)
     float pinnedHeaderX = p.x + scrollX;
+    draw_list->AddRectFilled(ImVec2(pinnedHeaderX, p.y), ImVec2(pinnedHeaderX + headerW - 4, p.y + rulerHeight), IM_COL32(25, 25, 25, 255), 4.0f);
+    draw_list->AddText(ImVec2(pinnedHeaderX + 10, p.y + 4), IM_COL32(150, 150, 150, 255), "Time");
+
     for (int t = 0; t < tracks.size(); ++t) {
-        float currentY = p.y + t * (trackHeight + trackSpacing);
+        float currentY = trackStartY + t * (trackHeight + trackSpacing);
         draw_list->AddRectFilled(ImVec2(pinnedHeaderX, currentY), ImVec2(pinnedHeaderX + headerW - 4, currentY + trackHeight), IM_COL32(30, 30, 30, 255), 4.0f);
         draw_list->AddText(ImVec2(pinnedHeaderX + 10, currentY + 12), IM_COL32(200, 200, 200, 255), tracks[t].name.c_str());
     }
 
     // Draw "+ ADD TRACK" button pinned horizontally
-    float plusY = p.y + tracks.size() * (trackHeight + trackSpacing) + 5.0f; 
+    float plusY = trackStartY + tracks.size() * (trackHeight + trackSpacing) + 5.0f; 
     ImGui::SetCursorScreenPos(ImVec2(pinnedHeaderX + 10, plusY)); 
     float time = ImGui::GetTime();
     float pulse = (std::sin(time * 5.0f) + 1.0f) * 0.5f; 
@@ -550,16 +642,22 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
     ImGui::PopStyleColor(2);
 
     if (ImGui::BeginPopup("AddTrackMenu")) {
-        if (ImGui::MenuItem("Add Video Track")) tracks.push_back({"Video " + std::to_string(tracks.size() + 1), TRACK_VIDEO});
-        if (ImGui::MenuItem("Add Audio Track")) tracks.push_back({"Audio " + std::to_string(tracks.size() + 1), TRACK_AUDIO});
+        if (ImGui::MenuItem("Add Video Track")) {
+            triggerUndoSave = true;
+            tracks.push_back({"Video " + std::to_string(tracks.size() + 1), TRACK_VIDEO});
+        }
+        if (ImGui::MenuItem("Add Audio Track")) {
+            triggerUndoSave = true;
+            tracks.push_back({"Audio " + std::to_string(tracks.size() + 1), TRACK_AUDIO});
+        }
         ImGui::EndPopup();
     }
 
     // 4. Draw playhead
     float playheadX = p.x + headerW + (progress * trackWidth);
     float playheadHeight = std::max(totalTimelineHeight, ImGui::GetWindowHeight());
-    draw_list->AddLine(ImVec2(playheadX, p.y - 10), ImVec2(playheadX, p.y + playheadHeight), IM_COL32(255, 50, 50, 255), 2.0f);
-    draw_list->AddTriangleFilled(ImVec2(playheadX - 6, p.y - 10), ImVec2(playheadX + 6, p.y - 10), ImVec2(playheadX, p.y), IM_COL32(255, 50, 50, 255));
+    draw_list->AddLine(ImVec2(playheadX, p.y), ImVec2(playheadX, p.y + playheadHeight), IM_COL32(255, 50, 50, 255), 2.0f);
+    draw_list->AddTriangleFilled(ImVec2(playheadX - 6, p.y), ImVec2(playheadX + 6, p.y), ImVec2(playheadX, p.y + 8), IM_COL32(255, 50, 50, 255));
 
     ImGui::SetCursorScreenPos(ImVec2(p.x + headerW, p.y));
     ImGui::InvisibleButton("##TrackArea", ImVec2(trackWidth, playheadHeight));
@@ -570,11 +668,12 @@ std::string UIManager::Render(int windowW, int windowH, int uiHeight,
 
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PROJECT_FILE")) {
+            triggerUndoSave = true;
             int fileIndex = *(const int*)payload->Data;
             std::string filepath = projectFiles[fileIndex];
             float dropTime = std::clamp((ImGui::GetMousePos().x - (p.x + headerW)) / trackWidth, 0.0f, 1.0f);
             float end = std::clamp(dropTime + 0.15f, 0.0f, 1.0f);
-            int trackIdx = std::clamp(static_cast<int>((ImGui::GetMousePos().y - p.y) / (trackHeight + trackSpacing)), 0, static_cast<int>(tracks.size() - 1));
+            int trackIdx = std::clamp(static_cast<int>((ImGui::GetMousePos().y - trackStartY) / (trackHeight + trackSpacing)), 0, static_cast<int>(tracks.size() - 1));
             VideoClip newClip(filepath, dropTime, end, trackIdx);
             if (TrackManager::AddClip(clips, newClip)) {
                 selectedClipIndex = clips.size() - 1;

@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -DSDL_MAIN_HANDLED -Dblood_filter_EXPORTS
 
-CXX_INCLUDES = -I/home/mark/Documents/Projects/VideoEditor/imgui -I/usr/include/SDL2 -I/usr/include/ffmpeg
+CXX_INCLUDES = -I/home/mark/Documents/Projects/VideoEditor/imgui -I/usr/include/SDL2 -I/usr/include/ffmpeg -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/harfbuzz -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/sysprof-6
 
 CXX_FLAGS = -O3 -DNDEBUG -std=gnu++17 -fPIC
 

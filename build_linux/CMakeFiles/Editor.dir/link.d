@@ -15,6 +15,8 @@ Editor: \
   CMakeFiles/Editor.dir/imgui/imgui_tables.cpp.o \
   CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o \
   /usr/lib64/libSDL2-2.0.so.0.3200.64 \
+  /usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libSDL2_ttf.so \
+  /usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libSDL2.so \
   /usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libavcodec.so \
   /usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libavformat.so \
   /usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libswscale.so \
@@ -46,6 +48,8 @@ Editor: \
   /usr/lib/gcc/x86_64-redhat-linux/15/libgcc.a \
   /usr/lib/gcc/x86_64-redhat-linux/15/crtend.o \
   /usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crtn.o \
+  /usr/lib64/libharfbuzz.so.0 \
+  /usr/lib64/libfreetype.so.6 \
   /usr/lib64/libvpx.so.9 \
   /usr/lib64/libwebpmux.so.3 \
   /usr/lib64/liblcms2.so.2 \
@@ -110,9 +114,10 @@ Editor: \
   /usr/local/cuda/targets/x86_64-linux/lib/libOpenCL.so.1 \
   /usr/lib64/libsoxr.so.0 \
   /lib64/ld-linux-x86-64.so.2 \
-  /usr/lib64/libfontconfig.so.1 \
-  /usr/lib64/libfreetype.so.6 \
+  /usr/lib64/libgraphite2.so.3 \
   /usr/lib64/libpng16.so.16 \
+  /usr/lib64/libbrotlidec.so.1 \
+  /usr/lib64/libfontconfig.so.1 \
   /usr/lib64/libgio-2.0.so.0 \
   /usr/lib64/libgdk_pixbuf-2.0.so.0 \
   /usr/lib64/libcairo-gobject.so.2 \
@@ -134,7 +139,6 @@ Editor: \
   /usr/lib64/liblpcnetfreedv.so.0.5 \
   /usr/lib64/libjxl_cms.so.0.11 \
   /usr/lib64/libhwy.so.1 \
-  /usr/lib64/libbrotlidec.so.1 \
   /usr/lib64/libbrotlienc.so.1 \
   /usr/lib64/libogg.so.0 \
   /usr/lib64/libsharpyuv.so.0 \
@@ -185,7 +189,7 @@ Editor: \
   /usr/lib64/libdl.so.2 \
   /usr/lib64/libpthread.so.0 \
   /usr/lib64/libgomp.so.1 \
-  /usr/lib64/libharfbuzz.so.0 \
+  /usr/lib64/libbrotlicommon.so.1 \
   /usr/lib64/libgmodule-2.0.so.0 \
   /usr/lib64/libmount.so.1 \
   /usr/lib64/libselinux.so.1 \
@@ -194,7 +198,6 @@ Editor: \
   /usr/lib64/libfribidi.so.0 \
   /usr/lib64/libthai.so.0 \
   /usr/lib64/libXau.so.6 \
-  /usr/lib64/libbrotlicommon.so.1 \
   /usr/lib64/libkrb5.so.3 \
   /usr/lib64/libk5crypto.so.3 \
   /usr/lib64/libcom_err.so.2 \
@@ -246,7 +249,6 @@ Editor: \
   /usr/lib64/samba/libcli-ldap-private-samba.so \
   /usr/lib64/samba/libcli-nbt-private-samba.so \
   /usr/lib64/samba/libiov-buf-private-samba.so \
-  /usr/lib64/libgraphite2.so.3 \
   /usr/lib64/libblkid.so.1 \
   /usr/lib64/libseccomp.so.2 \
   /usr/lib64/libdatrie.so.1 \
@@ -302,6 +304,10 @@ CMakeFiles/Editor.dir/imgui/imgui_tables.cpp.o:
 CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 
 /usr/lib64/libSDL2-2.0.so.0.3200.64:
+
+/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libSDL2_ttf.so:
+
+/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libSDL2.so:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libavcodec.so:
 
@@ -364,6 +370,10 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 /usr/lib/gcc/x86_64-redhat-linux/15/crtend.o:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crtn.o:
+
+/usr/lib64/libharfbuzz.so.0:
+
+/usr/lib64/libfreetype.so.6:
 
 /usr/lib64/libvpx.so.9:
 
@@ -493,11 +503,13 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 
 /lib64/ld-linux-x86-64.so.2:
 
-/usr/lib64/libfontconfig.so.1:
-
-/usr/lib64/libfreetype.so.6:
+/usr/lib64/libgraphite2.so.3:
 
 /usr/lib64/libpng16.so.16:
+
+/usr/lib64/libbrotlidec.so.1:
+
+/usr/lib64/libfontconfig.so.1:
 
 /usr/lib64/libgio-2.0.so.0:
 
@@ -540,8 +552,6 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 /usr/lib64/libjxl_cms.so.0.11:
 
 /usr/lib64/libhwy.so.1:
-
-/usr/lib64/libbrotlidec.so.1:
 
 /usr/lib64/libbrotlienc.so.1:
 
@@ -643,7 +653,7 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 
 /usr/lib64/libgomp.so.1:
 
-/usr/lib64/libharfbuzz.so.0:
+/usr/lib64/libbrotlicommon.so.1:
 
 /usr/lib64/libgmodule-2.0.so.0:
 
@@ -660,8 +670,6 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 /usr/lib64/libthai.so.0:
 
 /usr/lib64/libXau.so.6:
-
-/usr/lib64/libbrotlicommon.so.1:
 
 /usr/lib64/libkrb5.so.3:
 
@@ -764,8 +772,6 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 /usr/lib64/samba/libcli-nbt-private-samba.so:
 
 /usr/lib64/samba/libiov-buf-private-samba.so:
-
-/usr/lib64/libgraphite2.so.3:
 
 /usr/lib64/libblkid.so.1:
 

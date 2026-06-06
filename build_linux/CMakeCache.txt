@@ -28,7 +28,7 @@ CMAKE_BUILD_TYPE:STRING=Release
 CMAKE_COLOR_MAKEFILE:BOOL=ON
 
 //CXX compiler
-CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++
+CMAKE_CXX_COMPILER:STRING=/usr/bin/c++
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -54,7 +54,7 @@ CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
 //C compiler
-CMAKE_C_COMPILER:FILEPATH=/usr/bin/cc
+CMAKE_C_COMPILER:STRING=/usr/bin/cc
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -243,6 +243,12 @@ pkgcfg_lib_AVFORMAT_avformat:FILEPATH=/usr/lib64/libavformat.so
 pkgcfg_lib_AVUTIL_avutil:FILEPATH=/usr/lib64/libavutil.so
 
 //Path to a library.
+pkgcfg_lib_SDL2_TTF_SDL2:FILEPATH=/usr/lib64/libSDL2.so
+
+//Path to a library.
+pkgcfg_lib_SDL2_TTF_SDL2_ttf:FILEPATH=/usr/lib64/libSDL2_ttf.so
+
+//Path to a library.
 pkgcfg_lib_SWRESAMPLE_swresample:FILEPATH=/usr/lib64/libswresample.so
 
 //Path to a library.
@@ -369,7 +375,7 @@ CMAKE_CACHE_MAJOR_VERSION:INTERNAL=3
 //Minor version of cmake used to create the current loaded cache
 CMAKE_CACHE_MINOR_VERSION:INTERNAL=31
 //Patch version of cmake used to create the current loaded cache
-CMAKE_CACHE_PATCH_VERSION:INTERNAL=10
+CMAKE_CACHE_PATCH_VERSION:INTERNAL=11
 //ADVANCED property for variable: CMAKE_COLOR_MAKEFILE
 CMAKE_COLOR_MAKEFILE-ADVANCED:INTERNAL=1
 //Path to CMake executable.
@@ -511,6 +517,41 @@ FIND_PACKAGE_MESSAGE_DETAILS_PkgConfig:INTERNAL=[/usr/bin/pkg-config][v2.3.0()]
 PKG_CONFIG_ARGN-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: PKG_CONFIG_EXECUTABLE
 PKG_CONFIG_EXECUTABLE-ADVANCED:INTERNAL=1
+SDL2_TTF_CFLAGS:INTERNAL=-I/usr/include/SDL2;-I/usr/include;-D_GNU_SOURCE=1;-D_REENTRANT;-I/usr/include/freetype2;-I/usr/include/libpng16;-DWITH_GZFILEOP;-I/usr/include/harfbuzz;-I/usr/include/glib-2.0;-I/usr/lib64/glib-2.0/include;-I/usr/include/sysprof-6;-pthread
+SDL2_TTF_CFLAGS_I:INTERNAL=
+SDL2_TTF_CFLAGS_OTHER:INTERNAL=-D_GNU_SOURCE=1;-D_REENTRANT;-DWITH_GZFILEOP;-pthread
+SDL2_TTF_FOUND:INTERNAL=1
+SDL2_TTF_INCLUDEDIR:INTERNAL=/usr/include
+SDL2_TTF_INCLUDE_DIRS:INTERNAL=/usr/include/SDL2;/usr/include;/usr/include/freetype2;/usr/include/libpng16;/usr/include/harfbuzz;/usr/include/glib-2.0;/usr/lib64/glib-2.0/include;/usr/include/sysprof-6
+SDL2_TTF_LDFLAGS:INTERNAL=-L/usr/lib64;-lSDL2_ttf;-lSDL2
+SDL2_TTF_LDFLAGS_OTHER:INTERNAL=
+SDL2_TTF_LIBDIR:INTERNAL=/usr/lib64
+SDL2_TTF_LIBRARIES:INTERNAL=SDL2_ttf;SDL2
+SDL2_TTF_LIBRARY_DIRS:INTERNAL=/usr/lib64
+SDL2_TTF_LIBS:INTERNAL=
+SDL2_TTF_LIBS_L:INTERNAL=
+SDL2_TTF_LIBS_OTHER:INTERNAL=
+SDL2_TTF_LIBS_PATHS:INTERNAL=
+SDL2_TTF_MODULE_NAME:INTERNAL=SDL2_ttf
+SDL2_TTF_PREFIX:INTERNAL=/usr
+SDL2_TTF_SDL2_ttf_INCLUDEDIR:INTERNAL=
+SDL2_TTF_SDL2_ttf_LIBDIR:INTERNAL=
+SDL2_TTF_SDL2_ttf_PREFIX:INTERNAL=
+SDL2_TTF_SDL2_ttf_VERSION:INTERNAL=
+SDL2_TTF_STATIC_CFLAGS:INTERNAL=-I/usr/include/SDL2;-I/usr/include;-D_GNU_SOURCE=1;-D_REENTRANT;-I/usr/include/freetype2;-I/usr/include/libpng16;-DWITH_GZFILEOP;-I/usr/include/harfbuzz;-I/usr/include/glib-2.0;-I/usr/lib64/glib-2.0/include;-I/usr/include/sysprof-6;-pthread
+SDL2_TTF_STATIC_CFLAGS_I:INTERNAL=
+SDL2_TTF_STATIC_CFLAGS_OTHER:INTERNAL=-D_GNU_SOURCE=1;-D_REENTRANT;-DWITH_GZFILEOP;-pthread
+SDL2_TTF_STATIC_INCLUDE_DIRS:INTERNAL=/usr/include/SDL2;/usr/include;/usr/include/freetype2;/usr/include/libpng16;/usr/include/harfbuzz;/usr/include/glib-2.0;/usr/lib64/glib-2.0/include;/usr/include/sysprof-6
+SDL2_TTF_STATIC_LDFLAGS:INTERNAL=-L/usr/lib64;-lSDL2_ttf;-lSDL2;-ldl;-lfreetype;-lbz2;-lpng16;-lm;-lz;-lharfbuzz;-pthread;-lm;-lglib-2.0;-lm;-pthread;-lsysprof-capture-4;-Wl,-z,nodelete;-pthread;-lpcre2-8;-pthread;-lpthread;-lgraphite2;-lbrotlidec;-lbrotlicommon
+SDL2_TTF_STATIC_LDFLAGS_OTHER:INTERNAL=-pthread;-pthread;-Wl,-z,nodelete;-pthread;-pthread
+SDL2_TTF_STATIC_LIBDIR:INTERNAL=
+SDL2_TTF_STATIC_LIBRARIES:INTERNAL=SDL2_ttf;SDL2;dl;freetype;bz2;png16;m;z;harfbuzz;m;glib-2.0;m;sysprof-capture-4;pcre2-8;pthread;graphite2;brotlidec;brotlicommon
+SDL2_TTF_STATIC_LIBRARY_DIRS:INTERNAL=/usr/lib64
+SDL2_TTF_STATIC_LIBS:INTERNAL=
+SDL2_TTF_STATIC_LIBS_L:INTERNAL=
+SDL2_TTF_STATIC_LIBS_OTHER:INTERNAL=
+SDL2_TTF_STATIC_LIBS_PATHS:INTERNAL=
+SDL2_TTF_VERSION:INTERNAL=2.24.0
 SWRESAMPLE_CFLAGS:INTERNAL=-I/usr/include/ffmpeg
 SWRESAMPLE_CFLAGS_I:INTERNAL=
 SWRESAMPLE_CFLAGS_OTHER:INTERNAL=
@@ -584,11 +625,13 @@ SWSCALE_libswscale_VERSION:INTERNAL=
 __pkg_config_arguments_AVCODEC:INTERNAL=REQUIRED;libavcodec
 __pkg_config_arguments_AVFORMAT:INTERNAL=REQUIRED;libavformat
 __pkg_config_arguments_AVUTIL:INTERNAL=REQUIRED;libavutil
+__pkg_config_arguments_SDL2_TTF:INTERNAL=REQUIRED;SDL2_ttf
 __pkg_config_arguments_SWRESAMPLE:INTERNAL=REQUIRED;libswresample
 __pkg_config_arguments_SWSCALE:INTERNAL=REQUIRED;libswscale
 __pkg_config_checked_AVCODEC:INTERNAL=1
 __pkg_config_checked_AVFORMAT:INTERNAL=1
 __pkg_config_checked_AVUTIL:INTERNAL=1
+__pkg_config_checked_SDL2_TTF:INTERNAL=1
 __pkg_config_checked_SWRESAMPLE:INTERNAL=1
 __pkg_config_checked_SWSCALE:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_AVCODEC_avcodec
@@ -597,6 +640,10 @@ pkgcfg_lib_AVCODEC_avcodec-ADVANCED:INTERNAL=1
 pkgcfg_lib_AVFORMAT_avformat-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_AVUTIL_avutil
 pkgcfg_lib_AVUTIL_avutil-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_SDL2_TTF_SDL2
+pkgcfg_lib_SDL2_TTF_SDL2-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_SDL2_TTF_SDL2_ttf
+pkgcfg_lib_SDL2_TTF_SDL2_ttf-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_SWRESAMPLE_swresample
 pkgcfg_lib_SWRESAMPLE_swresample-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_SWSCALE_swscale

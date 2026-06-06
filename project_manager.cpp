@@ -280,7 +280,6 @@ bool ProjectManager::LoadProject(const std::string& filepath, ProjectData& outPr
                 if (std::getline(ss, mediaEndStr, '|') && !mediaEndStr.empty()) clip.mediaEnd = std::stof(mediaEndStr);
                 
                 // Эффекты
-                std::string effectsBlock;
                 if (std::getline(ss, effectsBlock, '|') && !effectsBlock.empty()) {
                     std::stringstream efxSS(effectsBlock);
                     std::string countStr;

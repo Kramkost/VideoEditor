@@ -166,17 +166,8 @@ CMakeFiles/Editor.dir/main.cpp.o: \
  /usr/include/c++/15/bits/uniform_int_dist.h \
  /usr/include/c++/15/bits/stl_tempbuf.h \
  /usr/include/c++/15/pstl/glue_algorithm_defs.h \
- /usr/include/c++/15/pstl/execution_defs.h \
- /home/mark/Documents/Projects/VideoEditor/export_ui.h \
- /home/mark/Documents/Projects/VideoEditor/imgui/imgui.h \
- /home/mark/Documents/Projects/VideoEditor/imgui/imconfig.h \
- /usr/lib/gcc/x86_64-redhat-linux/15/include/float.h \
- /usr/include/string.h /usr/include/strings.h /usr/include/assert.h \
- /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdl2.h \
- /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdlrenderer2.h \
- /home/mark/Documents/Projects/VideoEditor/project_manager.h \
- /usr/include/c++/15/filesystem /usr/include/c++/15/bits/fs_fwd.h \
- /usr/include/c++/15/cstdint \
+ /usr/include/c++/15/pstl/execution_defs.h /usr/include/c++/15/filesystem \
+ /usr/include/c++/15/bits/fs_fwd.h /usr/include/c++/15/cstdint \
  /usr/lib/gcc/x86_64-redhat-linux/15/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/stdint-uintn.h \
  /usr/include/bits/stdint-least.h /usr/include/c++/15/bits/chrono.h \
@@ -198,6 +189,18 @@ CMakeFiles/Editor.dir/main.cpp.o: \
  /usr/include/c++/15/bits/unique_ptr.h \
  /usr/include/c++/15/ext/aligned_buffer.h \
  /usr/include/c++/15/bits/fs_dir.h /usr/include/c++/15/bits/fs_ops.h \
+ /usr/include/c++/15/fstream \
+ /usr/include/c++/15/x86_64-redhat-linux/bits/basic_file.h \
+ /usr/include/c++/15/x86_64-redhat-linux/bits/c++io.h \
+ /usr/include/c++/15/bits/fstream.tcc \
+ /home/mark/Documents/Projects/VideoEditor/export_ui.h \
+ /home/mark/Documents/Projects/VideoEditor/imgui/imgui.h \
+ /home/mark/Documents/Projects/VideoEditor/imgui/imconfig.h \
+ /usr/lib/gcc/x86_64-redhat-linux/15/include/float.h \
+ /usr/include/string.h /usr/include/strings.h /usr/include/assert.h \
+ /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdl2.h \
+ /home/mark/Documents/Projects/VideoEditor/imgui/imgui_impl_sdlrenderer2.h \
+ /home/mark/Documents/Projects/VideoEditor/project_manager.h \
  /home/mark/Documents/Projects/VideoEditor/ui.h /usr/include/SDL2/SDL.h \
  /usr/include/SDL2/SDL_main.h /usr/include/SDL2/SDL_stdinc.h \
  /usr/include/SDL2/SDL_config.h /usr/include/SDL2/SDL_config-x86_64.h \
@@ -351,6 +354,7 @@ CMakeFiles/Editor.dir/main.cpp.o: \
  /home/mark/Documents/Projects/VideoEditor/logger.h /usr/include/dlfcn.h \
  /usr/include/bits/dlfcn.h /usr/include/bits/dl_find_object.h \
  /home/mark/Documents/Projects/VideoEditor/math_utils.h \
+ /usr/include/SDL2/SDL_ttf.h /usr/include/SDL2/SDL.h \
  /home/mark/Documents/Projects/VideoEditor/video_player.h \
  /usr/include/ffmpeg/libavcodec/avcodec.h \
  /usr/include/ffmpeg/libavutil/samplefmt.h \

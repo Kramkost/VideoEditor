@@ -2039,6 +2039,7 @@ CMakeFiles/Editor.dir/main.cpp.o: /home/mark/Documents/Projects/VideoEditor/main
   /usr/include/SDL2/SDL_thread.h \
   /usr/include/SDL2/SDL_timer.h \
   /usr/include/SDL2/SDL_touch.h \
+  /usr/include/SDL2/SDL_ttf.h \
   /usr/include/SDL2/SDL_version.h \
   /usr/include/SDL2/SDL_video.h \
   /usr/include/SDL2/begin_code.h \
@@ -2155,6 +2156,8 @@ CMakeFiles/Editor.dir/main.cpp.o: /home/mark/Documents/Projects/VideoEditor/main
   /usr/include/c++/15/bits/cpp_type_traits.h \
   /usr/include/c++/15/bits/cxxabi_forced.h \
   /usr/include/c++/15/bits/cxxabi_init_exception.h \
+  /usr/include/c++/15/bits/enable_special_members.h \
+  /usr/include/c++/15/bits/erase_if.h \
   /usr/include/c++/15/bits/exception.h \
   /usr/include/c++/15/bits/exception_defines.h \
   /usr/include/c++/15/bits/exception_ptr.h \
@@ -2162,9 +2165,12 @@ CMakeFiles/Editor.dir/main.cpp.o: /home/mark/Documents/Projects/VideoEditor/main
   /usr/include/c++/15/bits/fs_fwd.h \
   /usr/include/c++/15/bits/fs_ops.h \
   /usr/include/c++/15/bits/fs_path.h \
+  /usr/include/c++/15/bits/fstream.tcc \
   /usr/include/c++/15/bits/functexcept.h \
   /usr/include/c++/15/bits/functional_hash.h \
   /usr/include/c++/15/bits/hash_bytes.h \
+  /usr/include/c++/15/bits/hashtable.h \
+  /usr/include/c++/15/bits/hashtable_policy.h \
   /usr/include/c++/15/bits/invoke.h \
   /usr/include/c++/15/bits/ios_base.h \
   /usr/include/c++/15/bits/istream.tcc \
@@ -2181,6 +2187,7 @@ CMakeFiles/Editor.dir/main.cpp.o: /home/mark/Documents/Projects/VideoEditor/main
   /usr/include/c++/15/bits/move.h \
   /usr/include/c++/15/bits/nested_exception.h \
   /usr/include/c++/15/bits/new_allocator.h \
+  /usr/include/c++/15/bits/node_handle.h \
   /usr/include/c++/15/bits/ostream.h \
   /usr/include/c++/15/bits/ostream.tcc \
   /usr/include/c++/15/bits/ostream_insert.h \
@@ -2218,6 +2225,7 @@ CMakeFiles/Editor.dir/main.cpp.o: /home/mark/Documents/Projects/VideoEditor/main
   /usr/include/c++/15/bits/this_thread_sleep.h \
   /usr/include/c++/15/bits/uniform_int_dist.h \
   /usr/include/c++/15/bits/unique_ptr.h \
+  /usr/include/c++/15/bits/unordered_map.h \
   /usr/include/c++/15/bits/uses_allocator.h \
   /usr/include/c++/15/bits/uses_allocator_args.h \
   /usr/include/c++/15/bits/utility.h \
@@ -2248,6 +2256,7 @@ CMakeFiles/Editor.dir/main.cpp.o: /home/mark/Documents/Projects/VideoEditor/main
   /usr/include/c++/15/ext/string_conversions.h \
   /usr/include/c++/15/ext/type_traits.h \
   /usr/include/c++/15/filesystem \
+  /usr/include/c++/15/fstream \
   /usr/include/c++/15/initializer_list \
   /usr/include/c++/15/iomanip \
   /usr/include/c++/15/ios \
@@ -2286,10 +2295,13 @@ CMakeFiles/Editor.dir/main.cpp.o: /home/mark/Documents/Projects/VideoEditor/main
   /usr/include/c++/15/tuple \
   /usr/include/c++/15/type_traits \
   /usr/include/c++/15/typeinfo \
+  /usr/include/c++/15/unordered_map \
   /usr/include/c++/15/vector \
   /usr/include/c++/15/x86_64-redhat-linux/bits/atomic_word.h \
+  /usr/include/c++/15/x86_64-redhat-linux/bits/basic_file.h \
   /usr/include/c++/15/x86_64-redhat-linux/bits/c++allocator.h \
   /usr/include/c++/15/x86_64-redhat-linux/bits/c++config.h \
+  /usr/include/c++/15/x86_64-redhat-linux/bits/c++io.h \
   /usr/include/c++/15/x86_64-redhat-linux/bits/c++locale.h \
   /usr/include/c++/15/x86_64-redhat-linux/bits/cpu_defines.h \
   /usr/include/c++/15/x86_64-redhat-linux/bits/ctype_base.h \
@@ -4322,8 +4334,6 @@ CMakeFiles/Editor.dir/imgui/imgui_draw.cpp.o:
 
 /usr/lib64/libsrt.so.1.5:
 
-/usr/lib64/libspeex.so.1:
-
 /usr/lib64/libsodium.so.26:
 
 /usr/lib64/libsnappy.so.1:
@@ -4508,12 +4518,6 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 
 /home/mark/Documents/Projects/VideoEditor/video_player.cpp:
 
-/usr/include/c++/15/x86_64-redhat-linux/bits/basic_file.h:
-
-/usr/lib64/libsasl2.so.3:
-
-/usr/include/c++/15/bits/fstream.tcc:
-
 /home/mark/Documents/Projects/VideoEditor/project_manager.cpp:
 
 /usr/include/sched.h:
@@ -4545,6 +4549,24 @@ CMakeFiles/Editor.dir/imgui/imgui_widgets.cpp.o:
 /usr/lib64/libXrender.so.1:
 
 /usr/include/ffmpeg/libavutil/macros.h:
+
+/usr/include/ffmpeg/libavutil/log.h:
+
+/usr/lib64/samba/libsamba-cluster-support-private-samba.so:
+
+/usr/include/ffmpeg/libavutil/imgutils.h:
+
+/usr/include/ffmpeg/libavutil/hwcontext.h:
+
+/usr/include/ffmpeg/libavutil/error.h:
+
+/usr/include/ffmpeg/libavutil/common.h:
+
+/usr/include/ffmpeg/libavutil/channel_layout.h:
+
+/usr/include/ffmpeg/libavutil/avutil.h:
+
+/usr/include/ffmpeg/libavutil/avconfig.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512fp16intrin.h:
 
@@ -4648,10 +4670,6 @@ CMakeFiles/Editor.dir/project_manager.cpp.o:
 
 /usr/include/bits/types/mbstate_t.h:
 
-/usr/include/c++/15/x86_64-redhat-linux/bits/c++io.h:
-
-/home/mark/Documents/Projects/VideoEditor/imgui/imstb_truetype.h:
-
 /usr/include/bits/siginfo-consts.h:
 
 /usr/include/c++/15/cstdio:
@@ -4687,8 +4705,6 @@ CMakeFiles/Editor.dir/project_manager.cpp.o:
 /usr/include/bits/environments.h:
 
 /usr/include/bits/confname.h:
-
-/usr/include/ffmpeg/libavutil/log.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx10_2satcvtintrin.h:
 
@@ -5110,6 +5126,10 @@ CMakeFiles/Editor.dir/export_ui.cpp.o:
 
 /usr/include/bits/types/struct___jmp_buf_tag.h:
 
+/usr/lib64/libspeex.so.1:
+
+/usr/include/c++/15/bits/enable_special_members.h:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512fp16vlintrin.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512bf16intrin.h:
@@ -5152,6 +5172,8 @@ CMakeFiles/Editor.dir/export_ui.cpp.o:
 
 /usr/include/c++/15/ext/string_conversions.h:
 
+/usr/include/c++/15/bits/hashtable_policy.h:
+
 /usr/include/bits/signum-generic.h:
 
 /usr/include/c++/15/initializer_list:
@@ -5189,6 +5211,10 @@ CMakeFiles/Editor.dir/export_ui.cpp.o:
 /usr/include/ffmpeg/libavutil/frame.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512vldqintrin.h:
+
+/usr/lib64/libsasl2.so.3:
+
+/usr/include/c++/15/bits/fstream.tcc:
 
 /usr/lib64/libsoxr.so.0:
 
@@ -5253,10 +5279,6 @@ CMakeFiles/Editor.dir/export_ui.cpp.o:
 /usr/include/bits/struct_rwlock.h:
 
 /usr/include/c++/15/filesystem:
-
-CMakeFiles/Editor.dir/imgui/imgui_tables.cpp.o:
-
-/usr/include/dlfcn.h:
 
 /usr/include/string.h:
 
@@ -5406,6 +5428,8 @@ CMakeFiles/Editor.dir/imgui/imgui_tables.cpp.o:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/sha512intrin.h:
 
+/usr/include/c++/15/bits/erase_if.h:
+
 /usr/lib/gcc/x86_64-redhat-linux/15/include/sm4intrin.h:
 
 CMakeFiles/Editor.dir/video_player.cpp.o:
@@ -5431,6 +5455,8 @@ CMakeFiles/Editor.dir/video_player.cpp.o:
 /usr/lib/gcc/x86_64-redhat-linux/15/include/tsxldtrkintrin.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/include/vaesintrin.h:
+
+/usr/include/c++/15/bits/node_handle.h:
 
 /usr/lib64/libharfbuzz.so.0:
 
@@ -5467,6 +5493,10 @@ CMakeFiles/Editor.dir/video_player.cpp.o:
 /usr/lib/gcc/x86_64-redhat-linux/15/include/xtestintrin.h:
 
 /usr/include/inttypes.h:
+
+/usr/include/ffmpeg/libavutil/intfloat.h:
+
+/usr/include/SDL2/SDL_ttf.h:
 
 /home/mark/Documents/Projects/VideoEditor/imgui/imgui_widgets.cpp:
 
@@ -5542,8 +5572,6 @@ CMakeFiles/Editor.dir/video_player.cpp.o:
 
 /usr/include/SDL2/SDL_main.h:
 
-/usr/include/ffmpeg/libavutil/intfloat.h:
-
 /usr/include/c++/15/bits/refwrap.h:
 
 /usr/include/SDL2/SDL_misc.h:
@@ -5590,9 +5618,9 @@ CMakeFiles/Editor.dir/video_player.cpp.o:
 
 /usr/include/SDL2/SDL_stdinc.h:
 
-/usr/include/bits/cpu-set.h:
-
 /usr/include/ffmpeg/libavutil/buffer.h:
+
+/usr/include/bits/cpu-set.h:
 
 /usr/include/SDL2/SDL_surface.h:
 
@@ -5651,8 +5679,6 @@ CMakeFiles/Editor.dir/imgui/imgui.cpp.o:
 /usr/lib64/libpixman-1.so.0:
 
 /usr/include/bits/time.h:
-
-/usr/include/ffmpeg/libavutil/avutil.h:
 
 /usr/include/bits/stdint-least.h:
 
@@ -5730,8 +5756,6 @@ CMakeFiles/Editor.dir/imgui/imgui.cpp.o:
 
 /usr/include/c++/15/bits/locale_classes.tcc:
 
-/usr/include/ffmpeg/libavutil/hwcontext.h:
-
 /usr/lib/gcc/x86_64-redhat-linux/15/include/avx512dqintrin.h:
 
 /usr/include/c++/15/bits/locale_conv.h:
@@ -5788,6 +5812,12 @@ CMakeFiles/Editor.dir/imgui/imgui.cpp.o:
 
 /usr/include/c++/15/bits/unique_ptr.h:
 
+CMakeFiles/Editor.dir/imgui/imgui_tables.cpp.o:
+
+/usr/include/dlfcn.h:
+
+/usr/include/c++/15/bits/unordered_map.h:
+
 /usr/include/c++/15/bits/vector.tcc:
 
 /usr/include/bits/signum-arch.h:
@@ -5805,8 +5835,6 @@ CMakeFiles/Editor.dir/imgui/imgui.cpp.o:
 /usr/include/c++/15/ext/concurrence.h:
 
 /usr/include/c++/15/ext/atomicity.h:
-
-/usr/include/ffmpeg/libavutil/common.h:
 
 /usr/include/c++/15/bits/std_abs.h:
 
@@ -5830,7 +5858,15 @@ CMakeFiles/Editor.dir/imgui/imgui.cpp.o:
 
 /usr/include/c++/15/thread:
 
+/usr/include/c++/15/unordered_map:
+
 /usr/include/c++/15/x86_64-redhat-linux/bits/atomic_word.h:
+
+/usr/include/c++/15/x86_64-redhat-linux/bits/basic_file.h:
+
+/home/mark/Documents/Projects/VideoEditor/imgui/imstb_truetype.h:
+
+/usr/include/c++/15/x86_64-redhat-linux/bits/c++io.h:
 
 /lib64/libc.so.6:
 
@@ -5848,6 +5884,8 @@ CMakeFiles/Editor.dir/imgui/imgui.cpp.o:
 
 /usr/lib64/libX11-xcb.so.1:
 
+/usr/include/c++/15/bits/hashtable.h:
+
 /usr/include/ffmpeg/libavcodec/codec_par.h:
 
 /usr/include/ffmpeg/libavcodec/version.h:
@@ -5855,13 +5893,3 @@ CMakeFiles/Editor.dir/imgui/imgui.cpp.o:
 /usr/include/ffmpeg/libavcodec/version_major.h:
 
 /usr/include/ffmpeg/libavformat/avformat.h:
-
-/usr/include/ffmpeg/libavutil/avconfig.h:
-
-/usr/include/ffmpeg/libavutil/channel_layout.h:
-
-/usr/include/ffmpeg/libavutil/error.h:
-
-/usr/lib64/samba/libsamba-cluster-support-private-samba.so:
-
-/usr/include/ffmpeg/libavutil/imgutils.h:

@@ -304,6 +304,18 @@ int main(int argc, char* argv[]) {
     bool isProjectOpen = false;  
     std::unordered_map<std::string, double> mediaDurationCache;
     
+    std::vector<ProjectData> undoStack;
+    std::vector<ProjectData> redoStack;
+    const size_t MAX_HISTORY = 30;
+
+    auto SyncNextClipId = [](const std::vector<VideoClip>& clips) {
+        uint32_t maxId = 0;
+        for (const auto& clip : clips) {
+            if (clip.id > maxId) maxId = clip.id;
+        }
+        G_NextClipId = maxId + 1;
+    };
+
     std::vector<std::unique_ptr<VideoPlayer>> players;
     std::vector<int> lastActiveClipPerTrack;
     int selectedClipIndex = -1;
@@ -336,6 +348,8 @@ int main(int argc, char* argv[]) {
 
         if (dt > 0.1f) dt = 0.1f;
 
+        ProjectData preFrameProject = currentProject;
+
         while (SDL_PollEvent(&event)) {
             ui.ProcessEvent(&event); 
             if (event.type == SDL_QUIT) isRunning = false;
@@ -359,9 +373,21 @@ int main(int argc, char* argv[]) {
                 
                 if (event.key.keysym.sym == SDLK_DELETE || event.key.keysym.sym == SDLK_BACKSPACE) {
                     if (selectedClipIndex >= 0 && selectedClipIndex < currentProject.clips.size()) {
+                        ui.triggerUndoSave = true;
                         currentProject.clips.erase(currentProject.clips.begin() + selectedClipIndex);
                         selectedClipIndex = -1;
                     }
+                }
+                
+                if (event.key.keysym.sym == SDLK_z && (SDL_GetModState() & KMOD_CTRL)) {
+                    if (SDL_GetModState() & KMOD_SHIFT) {
+                        ui.triggerRedo = true;
+                    } else {
+                        ui.triggerUndo = true;
+                    }
+                }
+                if (event.key.keysym.sym == SDLK_y && (SDL_GetModState() & KMOD_CTRL)) {
+                    ui.triggerRedo = true;
                 }
                 
                 if (event.key.keysym.sym == SDLK_s && (SDL_GetModState() & KMOD_CTRL)) {
@@ -392,6 +418,8 @@ int main(int argc, char* argv[]) {
 
             if (ProjectManager::DrawStartScreen(WINDOW_VIEW_W, WINDOW_VIEW_H + EXTRA_UI_HEIGHT, currentProject)) {
                 isProjectOpen = true; 
+                undoStack.clear();
+                redoStack.clear();
                 players.clear();
                 for (int i = 0; i < currentProject.tracks.size(); i++) {
                     players.push_back(std::make_unique<VideoPlayer>());
@@ -510,7 +538,39 @@ int main(int argc, char* argv[]) {
                                             currentProgress, isPlaying, doSeek, 
                                             currentProject.clips, selectedClipIndex, 
                                             showExportMenu, currentProject.tracks, 
-                                            doAddText, effectChanged, currentProject.mediaFiles);
+                                            doAddText, effectChanged, currentProject.mediaFiles,
+                                            maxDurationSec, undoStack.empty(), redoStack.empty());
+
+            if (ui.triggerUndoSave) {
+                ui.triggerUndoSave = false;
+                undoStack.push_back(preFrameProject);
+                if (undoStack.size() > MAX_HISTORY) {
+                    undoStack.erase(undoStack.begin());
+                }
+                redoStack.clear();
+            }
+            if (ui.triggerUndo) {
+                ui.triggerUndo = false;
+                if (!undoStack.empty()) {
+                    redoStack.push_back(currentProject);
+                    currentProject = undoStack.back();
+                    undoStack.pop_back();
+                    SyncNextClipId(currentProject.clips);
+                    selectedClipIndex = -1;
+                    LOG_DEBUG("Undo performed");
+                }
+            }
+            if (ui.triggerRedo) {
+                ui.triggerRedo = false;
+                if (!redoStack.empty()) {
+                    undoStack.push_back(currentProject);
+                    currentProject = redoStack.back();
+                    redoStack.pop_back();
+                    SyncNextClipId(currentProject.clips);
+                    selectedClipIndex = -1;
+                    LOG_DEBUG("Redo performed");
+                }
+            }
                                             
             while (players.size() < currentProject.tracks.size()) {
                 players.push_back(std::make_unique<VideoPlayer>());

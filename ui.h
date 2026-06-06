@@ -102,7 +102,8 @@ public:
                        std::vector<VideoClip>& clips, int& selectedClipIndex, 
                        bool& showExport, std::vector<TimelineTrack>& tracks,
                        bool& doAddText, bool& effectChanged, 
-                       std::vector<std::string>& projectFiles);
+                       std::vector<std::string>& projectFiles,
+                       double maxDurationSec, bool undoStackEmpty, bool redoStackEmpty);
                        
     void DrawSurface(SDL_Renderer* renderer);
     void Shutdown();
@@ -112,6 +113,9 @@ public:
 
     bool triggerSave = false;
     bool triggerSaveAs = false;
+    bool triggerUndoSave = false;
+    bool triggerUndo = false;
+    bool triggerRedo = false;
     
 private:
     std::string OpenFileDialog();

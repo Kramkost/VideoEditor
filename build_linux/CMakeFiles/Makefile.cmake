@@ -8,9 +8,9 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
   "/home/mark/Documents/Projects/VideoEditor/CMakeLists.txt"
-  "CMakeFiles/3.31.10/CMakeCCompiler.cmake"
-  "CMakeFiles/3.31.10/CMakeCXXCompiler.cmake"
-  "CMakeFiles/3.31.10/CMakeSystem.cmake"
+  "CMakeFiles/3.31.11/CMakeCCompiler.cmake"
+  "CMakeFiles/3.31.11/CMakeCXXCompiler.cmake"
+  "CMakeFiles/3.31.11/CMakeSystem.cmake"
   "/usr/lib64/cmake/SDL2/SDL2Config.cmake"
   "/usr/lib64/cmake/SDL2/SDL2ConfigVersion.cmake"
   "/usr/lib64/cmake/SDL2/SDL2Targets-noconfig.cmake"

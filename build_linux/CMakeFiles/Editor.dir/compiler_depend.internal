@@ -2048,6 +2048,7 @@ CMakeFiles/Editor.dir/main.cpp.o
  /usr/include/SDL2/SDL_thread.h
  /usr/include/SDL2/SDL_timer.h
  /usr/include/SDL2/SDL_touch.h
+ /usr/include/SDL2/SDL_ttf.h
  /usr/include/SDL2/SDL_version.h
  /usr/include/SDL2/SDL_video.h
  /usr/include/SDL2/begin_code.h
@@ -2164,6 +2165,8 @@ CMakeFiles/Editor.dir/main.cpp.o
  /usr/include/c++/15/bits/cpp_type_traits.h
  /usr/include/c++/15/bits/cxxabi_forced.h
  /usr/include/c++/15/bits/cxxabi_init_exception.h
+ /usr/include/c++/15/bits/enable_special_members.h
+ /usr/include/c++/15/bits/erase_if.h
  /usr/include/c++/15/bits/exception.h
  /usr/include/c++/15/bits/exception_defines.h
  /usr/include/c++/15/bits/exception_ptr.h
@@ -2171,9 +2174,12 @@ CMakeFiles/Editor.dir/main.cpp.o
  /usr/include/c++/15/bits/fs_fwd.h
  /usr/include/c++/15/bits/fs_ops.h
  /usr/include/c++/15/bits/fs_path.h
+ /usr/include/c++/15/bits/fstream.tcc
  /usr/include/c++/15/bits/functexcept.h
  /usr/include/c++/15/bits/functional_hash.h
  /usr/include/c++/15/bits/hash_bytes.h
+ /usr/include/c++/15/bits/hashtable.h
+ /usr/include/c++/15/bits/hashtable_policy.h
  /usr/include/c++/15/bits/invoke.h
  /usr/include/c++/15/bits/ios_base.h
  /usr/include/c++/15/bits/istream.tcc
@@ -2190,6 +2196,7 @@ CMakeFiles/Editor.dir/main.cpp.o
  /usr/include/c++/15/bits/move.h
  /usr/include/c++/15/bits/nested_exception.h
  /usr/include/c++/15/bits/new_allocator.h
+ /usr/include/c++/15/bits/node_handle.h
  /usr/include/c++/15/bits/ostream.h
  /usr/include/c++/15/bits/ostream.tcc
  /usr/include/c++/15/bits/ostream_insert.h
@@ -2227,6 +2234,7 @@ CMakeFiles/Editor.dir/main.cpp.o
  /usr/include/c++/15/bits/this_thread_sleep.h
  /usr/include/c++/15/bits/uniform_int_dist.h
  /usr/include/c++/15/bits/unique_ptr.h
+ /usr/include/c++/15/bits/unordered_map.h
  /usr/include/c++/15/bits/uses_allocator.h
  /usr/include/c++/15/bits/uses_allocator_args.h
  /usr/include/c++/15/bits/utility.h
@@ -2257,6 +2265,7 @@ CMakeFiles/Editor.dir/main.cpp.o
  /usr/include/c++/15/ext/string_conversions.h
  /usr/include/c++/15/ext/type_traits.h
  /usr/include/c++/15/filesystem
+ /usr/include/c++/15/fstream
  /usr/include/c++/15/initializer_list
  /usr/include/c++/15/iomanip
  /usr/include/c++/15/ios
@@ -2295,10 +2304,13 @@ CMakeFiles/Editor.dir/main.cpp.o
  /usr/include/c++/15/tuple
  /usr/include/c++/15/type_traits
  /usr/include/c++/15/typeinfo
+ /usr/include/c++/15/unordered_map
  /usr/include/c++/15/vector
  /usr/include/c++/15/x86_64-redhat-linux/bits/atomic_word.h
+ /usr/include/c++/15/x86_64-redhat-linux/bits/basic_file.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/c++allocator.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/c++config.h
+ /usr/include/c++/15/x86_64-redhat-linux/bits/c++io.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/c++locale.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/cpu_defines.h
  /usr/include/c++/15/x86_64-redhat-linux/bits/ctype_base.h
